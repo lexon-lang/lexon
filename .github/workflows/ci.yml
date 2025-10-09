@@ -92,3 +92,25 @@ jobs:
           prefix-key: otel-smoke
       - name: Compile lib only (otel feature, no tests)
         run: cargo check -p lexc --lib --features otel -j 2 --locked
+
+
+  public-api-diff:
+    name: Public API diff (cargo-semver-checks)
+    runs-on: ubuntu-latest
+    if: github.event_name == "push" || github.event_name == "workflow_dispatch"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: cargo-semver-checks
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          package: lexc
+          release-type: minor
+          baseline-rev: origin/main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
