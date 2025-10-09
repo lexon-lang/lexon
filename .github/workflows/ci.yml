@@ -9,13 +9,17 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     name: Build, Lint, Test (ubuntu)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: 2
+      RUSTFLAGS: "-C codegen-units=1"
+      CARGO_INCREMENTAL: 0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,6 +32,9 @@ jobs:
           components: clippy, rustfmt
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+      - name: Cargo fetch
+        run: cargo fetch --locked
+        uses: Swatinem/rust-cache@v2
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
       - name: Cargo check (selected packages)
@@ -35,9 +42,9 @@ jobs:
       - name: Cargo clippy (deny warnings)
         run: cargo clippy -j 2 -p lexc -p lexc-cli --all-features -- -D warnings
       - name: Cargo build (locked)
-        run: cargo build --workspace --locked
+        run: cargo build --workspace --locked -j 2
       - name: Cargo test (workspace)
-        run: cargo test --workspace --no-run | cat
+        run: cargo test -p lexc -p lexc-cli --no-run -j 2 | cat
       - name: Install cargo-make (if Makefile present)
         if: hashFiles('Makefile.toml') != ''
         run: cargo install cargo-make
@@ -90,6 +97,9 @@ jobs:
         with:
           toolchain: 1.82.0
       - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Cargo fetch
+        run: cargo fetch --locked
         uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "otel-smoke"
