@@ -42,6 +42,10 @@ jobs:
         run: cargo check -p lexc -p lexc-cli -j 2
       - name: Cargo clippy (deny warnings)
         run: cargo clippy -j 2 -p lexc -p lexc-cli --all-features -- -D warnings
+      - name: Cargo build (locked)
+        run: cargo build --workspace --locked -j 2
+      - name: Cargo test (workspace)
+        run: cargo test --workspace --no-run -j 2 | cat
       - name: Lint (async + blocking I/O)
         run: cargo run -q -p lexc-cli -- lint samples/00-hello-lexon.lx
 
