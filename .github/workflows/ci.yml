@@ -32,10 +32,6 @@ jobs:
           components: clippy, rustfmt
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
-        with:
-          save-if: "always"
-      - name: Cargo fetch
-        run: cargo fetch --locked
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
       - name: Cargo check (selected packages)
@@ -84,17 +80,15 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.82.0
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          save-if: "always"
-        with:
-          prefix-key: "otel-smoke"
-      - name: Cargo fetch
-        run: cargo fetch --locked
+          prefix-key: otel-smoke
       - name: Compile lib only (otel feature, no tests)
         run: cargo check -p lexc --lib --features otel -j 2 --locked
