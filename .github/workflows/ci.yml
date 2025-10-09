@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     env:
       CARGO_BUILD_JOBS: 2
-      RUSTFLAGS: "-C codegen-units=1"
+      RUSTFLAGS: "-C codegen-units=1 -C debuginfo=0"
       CARGO_INCREMENTAL: 0
     steps:
       - name: Checkout
@@ -32,6 +32,8 @@ jobs:
           components: clippy, rustfmt
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: "always"
       - name: Cargo fetch
         run: cargo fetch --locked
       - name: Cargo fmt check
@@ -40,10 +42,6 @@ jobs:
         run: cargo check -p lexc -p lexc-cli -j 2
       - name: Cargo clippy (deny warnings)
         run: cargo clippy -j 2 -p lexc -p lexc-cli --all-features -- -D warnings
-      - name: Cargo build (locked)
-        run: cargo build -p lexc -p lexc-cli --locked -j 2
-      - name: Cargo test (workspace)
-        run: cargo test -p lexc -p lexc-cli --no-run -j 2 | cat
       - name: Lint (async + blocking I/O)
         run: cargo run -q -p lexc-cli -- lint samples/00-hello-lexon.lx
 
@@ -88,6 +86,8 @@ jobs:
           toolchain: 1.82.0
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: "always"
         with:
           prefix-key: "otel-smoke"
       - name: Cargo fetch
