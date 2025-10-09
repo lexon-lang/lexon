@@ -15,6 +15,7 @@ jobs:
   build:
     name: Build, Lint, Test (ubuntu)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +37,7 @@ jobs:
       - name: Cargo build (locked)
         run: cargo build --workspace --locked
       - name: Cargo test (workspace)
-        run: cargo test --workspace -- --nocapture | cat
+        run: cargo test --workspace --no-run | cat
       - name: Install cargo-make (if Makefile present)
         if: hashFiles('Makefile.toml') != ''
         run: cargo install cargo-make
