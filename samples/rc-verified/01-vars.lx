@@ -1,0 +1,9 @@
+// RC Verified: Variables, typing, typeof, Result
+let s: string = "Lexon";
+let n: int = 42;
+let f = 3.14; // inferred
+let b = true; // inferred
+let ok = Ok(1);
+let er = Error("e");
+let out = "" + typeof(s) + "," + typeof(n) + "," + typeof(f) + "," + typeof(b) + "," + is_ok(ok) + "," + is_error(er);
+write_file("samples/rc-verified/out/vars.txt", out);

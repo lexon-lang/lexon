@@ -1,0 +1,133 @@
+{
+  "name": "lexon",
+  "displayName": "LEXON - AI-Native Programming Language",
+  "description": "Syntax highlighting, snippets, and async/await support for LEXON - the world's first LLM-native programming language",
+  "version": "1.0.0",
+  "publisher": "lexon-lang",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Other"
+  ],
+  "keywords": [
+    "lexon",
+    "llm",
+    "ai",
+    "async",
+    "await",
+    "artificial intelligence",
+    "programming language",
+    "dsl"
+  ],
+  "activationEvents": [
+    "onLanguage:lexon"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "lexon",
+        "aliases": [
+          "LEXON",
+          "lexon"
+        ],
+        "extensions": [
+          ".lx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "lexon",
+        "scopeName": "source.lexon",
+        "path": "./syntaxes/lexon.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "lexon",
+        "path": "./snippets/lexon.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "lexon.runFile",
+        "title": "Run LEXON File",
+        "category": "LEXON"
+      },
+      {
+        "command": "lexon.checkSyntax",
+        "title": "Check Syntax",
+        "category": "LEXON"
+      },
+      {
+        "command": "lexon.lintFile",
+        "title": "Lint File",
+        "category": "LEXON"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "lexon.runFile",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "editorTextFocus && resourceExtname == '.lx'"
+      },
+      {
+        "command": "lexon.lintFile",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus && resourceExtname == '.lx'"
+      }
+    ],
+    "configuration": {
+      "title": "LEXON",
+      "properties": {
+        "lexon.executablePath": {
+          "type": "string",
+          "default": "lexc",
+          "description": "Path to the LEXON compiler executable"
+        },
+        "lexon.enableLinting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable linting with missing await warnings"
+        },
+        "lexon.defaultModel": {
+          "type": "string",
+          "default": "gpt-4",
+          "description": "Default LLM model to use"
+        },
+        "lexon.enableAsyncHighlighting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable special highlighting for async/await keywords"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "typescript": "^4.9.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lexon-lang/lexon.git"
+  },
+  "homepage": "https://lexon-lang.org",
+  "bugs": {
+    "url": "https://github.com/lexon-lang/lexon/issues"
+  },
+  "license": "MIT",
+  "author": ""
+}

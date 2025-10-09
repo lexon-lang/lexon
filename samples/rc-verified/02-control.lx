@@ -1,0 +1,7 @@
+// RC Verified: control flow if/while/match
+let x = 3;
+if x > 2 { write_file("samples/rc-verified/out/if.txt", "ok"); }
+let i = 0;
+while i < 2 { i = i + 1; }
+// emulate match with booleans using ifs
+if i == 2 { write_file("samples/rc-verified/out/while.txt", "done"); }

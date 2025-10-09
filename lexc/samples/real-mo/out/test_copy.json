@@ -1,0 +1,5 @@
+{
+  "text": "(1) JSON Summary:\n\n```json\n{\n  \"title\": \"User Information\",\n  \"description\": \"Details of users registered in our system\",\n  \"users\": [\n    {\n      \"id\": 1,\n      \"name\": \"John Doe\",\n      \"email\": \"john@example.com\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\"\n    }\n  ]\n}\n```\n\n(2) CSV Sample:\n\n```csv\nID,Name,Email\n1,John Doe,john@example.com\n2,Jane Doe,jane@example.com\n```\n\n(3) HTML Landing:\n\n```html\n<!DOCTYPE html>\n<html>\n<head>\n  <title>User Information</title>\n</head>\n<body>\n  <h1>Welcome to our User Information Page</h1>\n  <p>Here, you can find details about users registered in our system.</p>\n</body>\n</html>\n```\n\n(4) CSS Snippet:\n\n```css\nbody {\n  font-family: Arial, sans-serif;\n  background-color: #f0f0f0;\n  padding: 20px;\n}\n\nh1 {\n  color: #333;\n}\n\np",
+  "filename": "test.json",
+  "generated_by": "ask_multioutput"
+}

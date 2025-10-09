@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+    "lexc",
+    "lexc-cli",
+    "crates/lexon-py"
+]
+
+[workspace.metadata.cargo-deny-warnings]
+deny = true

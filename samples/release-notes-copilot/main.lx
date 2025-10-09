@@ -1,0 +1,20 @@
+// release-notes-copilot/main.lx — flagship sample for v1.0.0
+
+let changelog = read_file("samples/release-notes-copilot/CHANGELOG.md");
+let issues = read_file("samples/release-notes-copilot/issues.json");
+
+let drafts = ask_multioutput(
+  "From this changelog and issues, produce 4 artifacts: release notes, blog, tweets, highlights.",
+  ["RELEASE_NOTES.md","BLOG_POST.md","TWEET_THREAD.md","HIGHLIGHTS.md"]
+);
+
+let ok = validate_response(get_multioutput_text(drafts), "basic");
+if !ok {
+  print("Low confidence, applying fallback...");
+}
+
+save_multioutput_file(drafts, 0, "samples/release-notes-copilot/out/RELEASE_NOTES.md");
+save_multioutput_file(drafts, 1, "samples/release-notes-copilot/out/BLOG_POST.md");
+save_multioutput_file(drafts, 2, "samples/release-notes-copilot/out/TWEET_THREAD.md");
+save_multioutput_file(drafts, 3, "samples/release-notes-copilot/out/HIGHLIGHTS.md");
+

@@ -1,0 +1,77 @@
+[package]
+name = "lexc"
+version = "0.3.0"
+edition = "2021"
+
+[[bin]]
+name = "lexc"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tree-sitter = "0.22"
+# lexon-tree-sitter-grammar = { path = "../tree-sitter-lexon" } # Used by build script or if publishing the parser as a crate
+clap = { version = "4.4.10", features = ["derive"] }
+uuid = { version = "1.0", features = ["v4"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+ureq = { version = "2.9", features = ["json"] }
+polars = { version = "0.39", features = ["lazy", "csv", "dtype-struct", "strings", "parquet"] }
+polars-io = { version = "0.39", features = ["json", "parquet"] }
+jsonschema = "0.17"
+jsonpath_lib = "0.3"
+tokio = { version = "1.32", features = ["full"] }
+async-trait = "0.1"
+once_cell = "1.21"
+libloading = "0.8"
+## Removed unused deps (validated via cargo-udeps)
+# redis = { version = "0.23", features = ["tokio-comp"] }
+# futures = "0.3"
+toml = "0.8"
+regex = "1.10"
+# 🧠 Sprint D: Memory Index / RAG Lite dependencies (simplified)
+rusqlite = { version = "0.30", features = ["bundled"] }
+
+# For the CLI, we might use 'clap' later
+# clap = { version = "^4.0", features = ["derive"] }
+
+# Tracing deps (optional)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"], optional = true }
+anyhow = "1.0"
+
+# OpenTelemetry (optional, behind feature = "otel")
+opentelemetry = { version = "0.22", optional = true }
+opentelemetry-otlp = { version = "0.15", features = ["tonic"], optional = true }
+opentelemetry_sdk = { version = "0.22", optional = true }
+tracing-opentelemetry = { version = "0.23", optional = true }
+
+[build-dependencies]
+cc = "1.0"
+
+[dev-dependencies]
+tempfile = "3.8"
+
+# Removed duplicated dependencies
+
+[features]
+default = []
+# Enable OpenTelemetry-based tracing and exporter pipeline
+otel = [
+    "dep:opentelemetry",
+    "dep:opentelemetry-otlp",
+    "dep:opentelemetry_sdk",
+    "opentelemetry_sdk/rt-tokio",
+    "dep:tracing-opentelemetry",
+    "dep:tracing-subscriber",
+    "tracing/attributes",
+    "tracing-subscriber/fmt"
+]
+# Enable experimental, unstable APIs (documented only). No gating applied yet.
+experimental = [] 
+tree_sitter_tests = []
+
+[lib]
+doctest = false

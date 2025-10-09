@@ -1,0 +1,134 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+
+[tasks.build]
+description = "Build Lexon compiler"
+command = "cargo"
+args = ["build", "--release"]
+
+[tasks.test]
+description = "Run unit tests"
+command = "cargo"
+args = ["test"]
+
+[tasks.demo]
+description = "Run lexnote.lx example"
+dependencies = ["build"]
+script = '''
+#!/usr/bin/env bash
+mkdir -p out
+echo "Running Lexon demo with Polars..."
+target/release/lexc parse examples/lexnote.lx --execute
+echo "Demo completed. Files generated in 'out/'"
+'''
+
+[tasks.clean-out]
+description = "Clean output files"
+script = "rm -rf out/*"
+
+[tasks.meeting-demo]
+description = "Build and run meeting_assistant example"
+dependencies = ["build"]
+command = "cargo"
+args = ["run", "--release", "--", "compile", "--input-file", "examples/meeting_assistant.lx", "--run", "--async"]
+
+[tasks.samples-smoke]
+workspace = false
+script = [
+    "cargo run -q -p lexc-cli -- compile --run samples/00-hello-lexon.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/01-async-parallel.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/release-notes-copilot/main.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/data-quality/main.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/eval-harness/main.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/static-site/main.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/triage/main.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/sessions/main.lx"
+]
+
+[tasks.samples-rc-verified]
+workspace = false
+script = [
+    "cargo run -q -p lexc-cli -- compile --run samples/rc-verified/01-vars.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/rc-verified/02-control.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/rc-verified/03-iterators.lx",
+    "cargo run -q -p lexc-cli -- compile --run samples/rc-verified/04-modules.lx"
+]
+
+[tasks.samples-snapshot]
+workspace = false
+description = "Diff sample outputs against expected golden files"
+script = '''
+#!/usr/bin/env bash
+set -euo pipefail
+fail=0
+
+pairs='samples/static-site/out/site/index.html|samples/static-site/expected/index.html
+samples/static-site/out/site/styles.css|samples/static-site/expected/styles.css
+samples/static-site/out/site/sitemap.xml|samples/static-site/expected/sitemap.xml
+samples/data-quality/out/report.html|samples/data-quality/expected/report.html
+samples/data-quality/out/findings.md|samples/data-quality/expected/findings.md
+samples/triage/out/triage.csv|samples/triage/expected/triage.csv
+samples/triage/out/playbook.md|samples/triage/expected/playbook.md
+samples/sessions/session_summary.md|samples/sessions/expected/session_summary.md'
+
+while IFS='|' read -r actual expected; do
+  [[ -z "${actual:-}" ]] && continue
+  if [[ ! -f "$actual" ]]; then
+    echo "Missing output: $actual" >&2
+    fail=1
+    continue
+  fi
+  if [[ ! -f "$expected" ]]; then
+    echo "Missing expected: $expected" >&2
+    fail=1
+    continue
+  fi
+  if ! diff -u "$expected" "$actual" >/dev/null; then
+    echo "Diff found for $actual vs $expected" >&2
+    diff -u "$expected" "$actual" || true
+    fail=1
+  else
+    echo "OK: $actual matches $expected"
+  fi
+done <<< "$pairs"
+
+exit $fail
+'''
+
+[tasks.python-dev-install]
+workspace = false
+description = "Build and install lexon_py into current Python env (editable)"
+script = [
+    "cd crates/lexon-py && python3 -m pip install --upgrade pip",
+    "cd crates/lexon-py && python3 -m pip install maturin",
+    "cd crates/lexon-py && python3 -m maturin develop"
+]
+
+[tasks.samples-generate-expected]
+workspace = false
+description = "Copy current outputs into expected golden directories"
+script = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p samples/static-site/expected
+mkdir -p samples/data-quality/expected
+mkdir -p samples/triage/expected
+mkdir -p samples/sessions/expected
+
+cp -f samples/static-site/out/site/index.html samples/static-site/expected/index.html || true
+cp -f samples/static-site/out/site/styles.css samples/static-site/expected/styles.css || true
+cp -f samples/static-site/out/site/sitemap.xml samples/static-site/expected/sitemap.xml || true
+
+cp -f samples/data-quality/out/report.html samples/data-quality/expected/report.html || true
+cp -f samples/data-quality/out/findings.md samples/data-quality/expected/findings.md || true
+
+cp -f samples/triage/out/triage.csv samples/triage/expected/triage.csv || true
+cp -f samples/triage/out/playbook.md samples/triage/expected/playbook.md || true
+
+cp -f samples/sessions/session_summary.md samples/sessions/expected/session_summary.md || true
+'''
+
+[tasks.default]
+description = "Default task (build + test)"
+dependencies = ["build", "test"] 

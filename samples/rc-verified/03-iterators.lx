@@ -1,0 +1,5 @@
+// RC Verified: iterators
+let arr = [1,2,3,4];
+let ev = filter(arr, "x % 2 == 0");
+let sum = reduce(ev, 0, "acc + x");
+write_file("samples/rc-verified/out/iters.txt", "sum=" + sum);

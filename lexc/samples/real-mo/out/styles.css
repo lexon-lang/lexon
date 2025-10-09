@@ -1,0 +1,58 @@
+(1) JSON Summary:
+
+```json
+{
+  "title": "User Information",
+  "description": "Details of users registered in our system",
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    {
+      "id": 2,
+      "name": "Jane Doe",
+      "email": "jane@example.com"
+    }
+  ]
+}
+```
+
+(2) CSV Sample:
+
+```csv
+ID,Name,Email
+1,John Doe,john@example.com
+2,Jane Doe,jane@example.com
+```
+
+(3) HTML Landing:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Information</title>
+</head>
+<body>
+  <h1>Welcome to our User Information Page</h1>
+  <p>Here, you can find details about users registered in our system.</p>
+</body>
+</html>
+```
+
+(4) CSS Snippet:
+
+```css
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  padding: 20px;
+}
+
+h1 {
+  color: #333;
+}
+
+p

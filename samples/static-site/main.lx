@@ -1,0 +1,17 @@
+// Static Site Generator (offline, deterministic)
+
+let docs = [
+  read_file("samples/static-site/docs/intro.md"),
+  read_file("samples/static-site/docs/guide.md")
+];
+
+let site = ask_multioutput(
+  "Generate a tiny static site (index.html, styles.css, sitemap.xml) from these docs.",
+  ["site/index.html","site/styles.css","site/sitemap.xml"]
+);
+
+save_multioutput_file(site, 0, "samples/static-site/out/site/index.html");
+save_multioutput_file(site, 1, "samples/static-site/out/site/styles.css");
+save_multioutput_file(site, 2, "samples/static-site/out/site/sitemap.xml");
+print("Static site generated.");
+

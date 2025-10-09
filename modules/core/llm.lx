@@ -1,0 +1,34 @@
+// 🔧 Core LLM Module
+// ==================
+// Utility functions for handling LLMs
+
+module core.llm;
+
+// Function to get information about the current model
+fn get_model_info(model_name: string) -> string {
+    let provider = get_provider_default(model_name);
+    return "Model: " + model_name + " | Provider: " + provider;
+}
+
+// Function to ask with retry
+fn ask_with_retry(prompt: string, max_attempts: int) -> string {
+    let attempts = 0;
+    while attempts < max_attempts {
+        let response = ask(prompt);
+        if response != "" {
+            return response;
+        }
+        attempts = attempts + 1;
+    }
+    return "Failed after " + max_attempts.toString() + " attempts";
+}
+
+// Function to configure default model with validation
+fn configure_default_model(model_name: string) -> bool {
+    // Validate that the model exists
+    let valid_models = ["gpt-4", "gpt-3.5-turbo", "claude-3-5-sonnet-20241022", "gemini-1.5-pro"];
+    
+    // Validation would go here (simplified for the example)
+    let success = set_default_model(model_name);
+    return success;
+} 

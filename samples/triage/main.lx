@@ -1,0 +1,13 @@
+// Customer Triage (offline)
+
+let csv_text = read_file("samples/triage/tickets.csv");
+
+let triage = ask_multioutput(
+  "From these tickets, produce a triage.csv with priority and a playbook.md with steps.",
+  ["triage.csv","playbook.md"]
+);
+
+save_multioutput_file(triage, 0, "samples/triage/out/triage.csv");
+save_multioutput_file(triage, 1, "samples/triage/out/playbook.md");
+print("Triage generated.");
+

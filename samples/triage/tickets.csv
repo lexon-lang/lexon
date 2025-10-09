@@ -1,0 +1,5 @@
+id,subject,customer,severity
+1,Payment failed,Alice,high
+2,Login issue,Bob,medium
+3,UI glitch,Cara,low
+

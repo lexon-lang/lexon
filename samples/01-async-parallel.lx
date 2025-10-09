@@ -1,0 +1,6 @@
+// 01-async-parallel.lx — async/await + parallel + merge (offline by default)
+
+let results = ask_parallel("2+2?", "Capital of Spain?", "Color of the sky?");
+let merged = ask_merge(results, "synthesize");
+print(merged);
+

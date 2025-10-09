@@ -1,0 +1,11 @@
+// Eval Harness Mini (offline)
+
+let results = ask_parallel(
+  "Explain AI in one sentence",
+  "Summarize machine learning",
+  "What is NLP?"
+);
+
+let merged = ask_merge(results, "summarize");
+print(merged);
+

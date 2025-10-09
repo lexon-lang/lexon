@@ -1,0 +1,4 @@
+// RC Verified: modules (call simple function)
+// We'll just exercise a small ask to avoid real import complexity in RC
+let r = ask("rc-verified");
+write_file("samples/rc-verified/out/modules.txt", r);

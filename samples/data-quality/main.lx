@@ -1,0 +1,13 @@
+// Data Quality Report (offline)
+
+let csv_text = read_file("samples/data-quality/sales.csv");
+
+let report = ask_multioutput(
+  "From this CSV data, produce: 1) an HTML data quality report, 2) a short markdown findings summary.",
+  ["report.html", "findings.md"]
+);
+
+save_multioutput_file(report, 0, "samples/data-quality/out/report.html");
+save_multioutput_file(report, 1, "samples/data-quality/out/findings.md");
+print("Data quality report generated.");
+

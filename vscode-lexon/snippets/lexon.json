@@ -1,0 +1,252 @@
+{
+  "Async Function": {
+    "prefix": "async",
+    "body": [
+      "async fn ${1:function_name}() {",
+      "    ${2:// async function body}",
+      "    let result = await ${3:async_operation()};",
+      "    ${4:return result;}",
+      "}"
+    ],
+    "description": "Create an async function with await"
+  },
+  "Await Expression": {
+    "prefix": "await",
+    "body": [
+      "await ${1:async_expression}"
+    ],
+    "description": "Await an async expression"
+  },
+  "Ask LLM": {
+    "prefix": "ask",
+    "body": [
+      "let ${1:response} = ask(\"${2:prompt}\", \"${3:gpt-4}\");"
+    ],
+    "description": "Ask an LLM model"
+  },
+  "Ask Safe": {
+    "prefix": "ask_safe",
+    "body": [
+      "let ${1:result} = ask_safe(\"${2:prompt}\", \"${3:gpt-4}\", {",
+      "    validation_strategy: \"${4:basic}\",",
+      "    confidence_threshold: ${5:0.8},",
+      "    max_validation_attempts: ${6:3}",
+      "});"
+    ],
+    "description": "Ask with anti-hallucination validation"
+  },
+  "Ask Parallel": {
+    "prefix": "ask_parallel",
+    "body": [
+      "let ${1:results} = ask_parallel([",
+      "    \"${2:prompt1}\",",
+      "    \"${3:prompt2}\",",
+      "    \"${4:prompt3}\"",
+      "], \"${5:gpt-4}\");"
+    ],
+    "description": "Ask multiple prompts in parallel"
+  },
+  "Ask Ensemble": {
+    "prefix": "ask_ensemble",
+    "body": [
+      "let ${1:consensus} = ask_ensemble([",
+      "    \"${2:prompt1}\",",
+      "    \"${3:prompt2}\"",
+      "], \"${4:MajorityVote}\", \"${5:gpt-4}\");"
+    ],
+    "description": "Ask with ensemble consensus"
+  },
+  "Ask Multioutput": {
+    "prefix": "ask_multioutput",
+    "body": [
+      "let ${1:multioutput} = ask_multioutput(\"${2:prompt}\", [",
+      "    \"${3:file1.html}\",",
+      "    \"${4:file2.css}\"",
+      "]);"
+    ],
+    "description": "Generate multiple output files"
+  },
+  "Model Arbitrage": {
+    "prefix": "model_arbitrage",
+    "body": [
+      "let ${1:consensus} = model_arbitrage(\"${2:topic}\", \"${3:gpt-4,claude-3-5-sonnet-20241022}\", ${4:2});"
+    ],
+    "description": "Model arbitrage for consensus"
+  },
+  "Session Ask": {
+    "prefix": "session_ask",
+    "body": [
+      "let ${1:response} = session_ask(\"${2:session_id}\", \"${3:prompt}\", \"${4:gpt-4}\");"
+    ],
+    "description": "Ask with session context"
+  },
+  "Data Load": {
+    "prefix": "data",
+    "body": [
+      "let ${1:data} = data(\"${2:file.csv}\");"
+    ],
+    "description": "Load data from CSV file"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": [
+      "for ${1:item} in ${2:array} {",
+      "    ${3:// loop body}",
+      "}"
+    ],
+    "description": "For loop over array"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while ${1:condition} {",
+      "    ${2:// loop body}",
+      "}"
+    ],
+    "description": "While loop"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} {",
+      "    ${2:// if body}",
+      "} else {",
+      "    ${3:// else body}",
+      "}"
+    ],
+    "description": "If-else statement"
+  },
+  "Match Expression": {
+    "prefix": "match",
+    "body": [
+      "match ${1:value} {",
+      "    ${2:pattern1} => ${3:result1},",
+      "    ${4:pattern2} => ${5:result2},",
+      "    default => ${6:default_result}",
+      "}"
+    ],
+    "description": "Match expression"
+  },
+  "Function Definition": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:function_name}(${2:parameters}) {",
+      "    ${3:// function body}",
+      "    return ${4:result};",
+      "}"
+    ],
+    "description": "Function definition"
+  },
+  "Range": {
+    "prefix": "range",
+    "body": [
+      "range(${1:start}, ${2:end}, ${3:step})"
+    ],
+    "description": "Generate range of numbers"
+  },
+  "Map": {
+    "prefix": "map",
+    "body": [
+      "map(${1:array}, '${2:x => x * 2}')"
+    ],
+    "description": "Map transformation over array"
+  },
+  "Filter": {
+    "prefix": "filter",
+    "body": [
+      "filter(${1:array}, '${2:x => x > 0}')"
+    ],
+    "description": "Filter array with predicate"
+  },
+  "Reduce": {
+    "prefix": "reduce",
+    "body": [
+      "reduce(${1:array}, ${2:initial}, '${3:acc + x}')"
+    ],
+    "description": "Reduce array to single value"
+  },
+  "Memory Store": {
+    "prefix": "memory_store",
+    "body": [
+      "memory_store(\"${1:key}\", ${2:value});"
+    ],
+    "description": "Store value in memory"
+  },
+  "Memory Load": {
+    "prefix": "memory_load",
+    "body": [
+      "let ${1:value} = memory_load(\"${2:key}\");"
+    ],
+    "description": "Load value from memory"
+  },
+  "Vector Search": {
+    "prefix": "vector_search",
+    "body": [
+      "let ${1:results} = memory_index.vector_search(\"${2:query}\", ${3:k});"
+    ],
+    "description": "Vector search in memory index"
+  },
+  "Auto RAG Context": {
+    "prefix": "auto_rag",
+    "body": [
+      "let ${1:context} = auto_rag_context();"
+    ],
+    "description": "Generate automatic RAG context"
+  },
+  "Confidence Score": {
+    "prefix": "confidence_score",
+    "body": [
+      "let ${1:score} = confidence_score(\"${2:response_text}\");"
+    ],
+    "description": "Calculate confidence score"
+  },
+  "Validate Response": {
+    "prefix": "validate_response",
+    "body": [
+      "let ${1:is_valid} = validate_response(\"${2:response_text}\", \"${3:basic}\");"
+    ],
+    "description": "Validate LLM response"
+  },
+  "Set Default Model": {
+    "prefix": "set_default_model",
+    "body": [
+      "set_default_model(\"${1:gpt-4}\");"
+    ],
+    "description": "Set default LLM model"
+  },
+  "Get Provider Default": {
+    "prefix": "get_provider_default",
+    "body": [
+      "let ${1:model} = get_provider_default(\"${2:openai}\");"
+    ],
+    "description": "Get default model for provider"
+  },
+  "Read File": {
+    "prefix": "read_file",
+    "body": [
+      "let ${1:content} = read_file(\"${2:filename.txt}\");"
+    ],
+    "description": "Read file content"
+  },
+  "Write File": {
+    "prefix": "write_file",
+    "body": [
+      "write_file(\"${1:filename.txt}\", ${2:content});"
+    ],
+    "description": "Write content to file"
+  },
+  "Execute Command": {
+    "prefix": "execute",
+    "body": [
+      "let ${1:result} = execute(\"${2:command}\");"
+    ],
+    "description": "Execute shell command"
+  },
+  "Print": {
+    "prefix": "print",
+    "body": [
+      "print(${1:value});"
+    ],
+    "description": "Print value to console"
+  }
+} 

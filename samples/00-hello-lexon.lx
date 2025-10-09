@@ -1,0 +1,13 @@
+// 00-hello-lexon.lx — minimal, offline-first
+
+let greeting: string = "Hello Lexon 1.0!";
+print(greeting);
+
+// Deterministic offline ask
+let answer: string = ask {
+    model: simulated;
+    user: "Say 'LEXON OK' exactly";
+};
+
+print(answer);
+

@@ -1,0 +1,17 @@
+// Session Memory Demo (offline)
+
+let convo = read_file("samples/sessions/conversation.json");
+
+let session_id = "demo_session_001";
+let _started = session_start(session_id);
+
+let _ = session_ask(session_id, "Hello, can you describe Lexon briefly?");
+let _ = session_ask(session_id, "What features are unique?");
+
+let hist = session_history(session_id);
+let summary = session_summarize(session_id, { length: "medium", focus: "comprehensive" });
+
+write_file("samples/sessions/session_history.json", hist);
+write_file("samples/sessions/session_summary.md", summary);
+print("Session demo done.");
+

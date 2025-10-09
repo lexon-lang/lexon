@@ -1,0 +1,6 @@
+{
+  "messages": [
+    {"role":"user","content":"Hello, I'm testing Lexon."},
+    {"role":"assistant","content":"Great! Lexon is an LLM-native language."}
+  ]
+}

@@ -1,0 +1,20 @@
+[package]
+name = "lexon_py"
+version = "0.1.0"
+edition = "2021"
+description = "Python bindings for Lexon runtime"
+license = "MIT OR Apache-2.0"
+links = "python3"
+
+[lib]
+name = "lexon_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
+tree-sitter = "0.22"
+lexc = { path = "../../lexc" }
+
+[features]
+default = [ ] 

@@ -1,0 +1,255 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "LEXON",
+  "scopeName": "source.lexon",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#async-keywords"
+    },
+    {
+      "include": "#llm-functions"
+    },
+    {
+      "include": "#data-functions"
+    },
+    {
+      "include": "#control-flow"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#function-definitions"
+    },
+    {
+      "include": "#variables"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.lexon",
+          "begin": "//",
+          "end": "$"
+        },
+        {
+          "name": "comment.block.lexon",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.lexon",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.lexon",
+              "match": "\\\\."
+            },
+            {
+              "name": "constant.other.placeholder.lexon",
+              "match": "\\$\\{[^}]+\\}"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.lexon",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.lexon",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.decimal.lexon",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        },
+        {
+          "name": "constant.numeric.hex.lexon",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.lexon",
+          "match": "\\b(if|else|while|for|in|match|case|default|break|continue|return)\\b"
+        },
+        {
+          "name": "keyword.operator.lexon",
+          "match": "\\b(and|or|not|typeof)\\b"
+        },
+        {
+          "name": "storage.type.lexon",
+          "match": "\\b(let|const|var|fn|struct|enum)\\b"
+        },
+        {
+          "name": "constant.language.lexon",
+          "match": "\\b(true|false|null|undefined)\\b"
+        }
+      ]
+    },
+    "async-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.async.lexon",
+          "match": "\\b(async|await)\\b"
+        },
+        {
+          "name": "storage.type.async.lexon",
+          "match": "\\b(Future)\\b"
+        }
+      ]
+    },
+    "llm-functions": {
+      "patterns": [
+        {
+          "name": "support.function.llm.lexon",
+          "match": "\\b(ask|ask_safe|ask_parallel|ask_merge|ask_ensemble|ask_with_fallback|ask_multioutput)\\b"
+        },
+        {
+          "name": "support.function.llm.advanced.lexon",
+          "match": "\\b(model_arbitrage|model_dialogue|session_ask|multimodal_request|confidence_score|validate_response)\\b"
+        },
+        {
+          "name": "support.function.llm.config.lexon",
+          "match": "\\b(set_default_model|get_provider_default|get_model_info)\\b"
+        }
+      ]
+    },
+    "data-functions": {
+      "patterns": [
+        {
+          "name": "support.function.data.lexon",
+          "match": "\\b(data|load_file|save_file|read_file|write_file|execute)\\b"
+        },
+        {
+          "name": "support.function.data.advanced.lexon",
+          "match": "\\b(enumerate|range|map|filter|reduce|zip|flatten|unique|sort|reverse|chunk|find|count)\\b"
+        },
+        {
+          "name": "support.function.memory.lexon",
+          "match": "\\b(memory_store|memory_load|memory_clear|memory_index|vector_search|auto_rag_context)\\b"
+        }
+      ]
+    },
+    "control-flow": {
+      "patterns": [
+        {
+          "name": "keyword.control.conditional.lexon",
+          "match": "\\b(if|else|elif)\\b"
+        },
+        {
+          "name": "keyword.control.loop.lexon",
+          "match": "\\b(while|for|in)\\b"
+        },
+        {
+          "name": "keyword.control.exception.lexon",
+          "match": "\\b(try|catch|finally|throw)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arithmetic.lexon",
+          "match": "[+\\-*/&%]"
+        },
+        {
+          "name": "keyword.operator.comparison.lexon",
+          "match": "(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.logical.lexon",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.assignment.lexon",
+          "match": "(=|\\+=|-=|\\*=|/=|%=)"
+        },
+        {
+          "name": "keyword.operator.other.lexon",
+          "match": "(\\.|\\?|:)"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.primitive.lexon",
+          "match": "\\b(int|float|string|bool|array|object|any)\\b"
+        },
+        {
+          "name": "storage.type.llm.lexon",
+          "match": "\\b(LlmResponse|ValidationResult|MultiOutput|BinaryFile)\\b"
+        }
+      ]
+    },
+    "function-definitions": {
+      "patterns": [
+        {
+          "name": "meta.function.lexon",
+          "begin": "\\b(async\\s+)?fn\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.async.lexon"
+            },
+            "2": {
+              "name": "entity.name.function.lexon"
+            }
+          },
+          "end": "\\{",
+          "patterns": [
+            {
+              "include": "#function-parameters"
+            }
+          ]
+        }
+      ]
+    },
+    "function-parameters": {
+      "patterns": [
+        {
+          "name": "variable.parameter.lexon",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.lexon",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+} 

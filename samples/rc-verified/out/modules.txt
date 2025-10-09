@@ -1,0 +1,7 @@
+🤖 SIMULATED RESPONSE (SIMULATED)
+Model: simulated
+Mode: Development/Testing
+
+USER: rc-verified
+
+RESPONSE: This is a simulated LLM response for development and testing purposes.

@@ -1,0 +1,150 @@
+// LEXON Example - Demonstrating async/await and LLM integration
+// This file showcases the VS Code extension features
+
+// Basic async function with LLM integration
+async fn analyze_customer_feedback() {
+    print("🚀 Starting customer feedback analysis...");
+    
+    // Load data asynchronously
+    let feedback_data = await data("customer_feedback.csv");
+    print("📊 Loaded feedback data: " + feedback_data.length + " entries");
+    
+    // Parallel processing of feedback
+    let analysis_results = await ask_parallel([
+        "Analyze sentiment of customer feedback",
+        "Extract key themes from feedback",
+        "Identify improvement opportunities"
+    ], "gpt-4");
+    
+    // Generate comprehensive report
+    let report = await ask_safe("Create executive summary", "gpt-4", {
+        validation_strategy: "comprehensive",
+        confidence_threshold: 0.9,
+        max_validation_attempts: 3
+    });
+    
+    return report;
+}
+
+// Multioutput example - Generate complete web dashboard
+async fn create_dashboard() {
+    let dashboard = await ask_multioutput(
+        "Create a customer analytics dashboard with charts and insights",
+        ["dashboard.html", "styles.css", "analytics.js", "data.json"]
+    );
+    
+    // Save generated files
+    for file in get_multioutput_files(dashboard) {
+        save_multioutput_file(dashboard, file.index, "output/" + file.name);
+    }
+    
+    print("✅ Dashboard created successfully!");
+    return dashboard;
+}
+
+// Data processing with functional programming
+fn process_sales_data() {
+    let sales = data("sales.csv");
+    
+    // Functional pipeline
+    let top_products = sales
+        |> filter('revenue > 1000')
+        |> map('product_name')
+        |> unique()
+        |> sort('desc')
+        |> chunk(10);
+    
+    return top_products;
+}
+
+// Memory and RAG operations
+async fn smart_search() {
+    // Ingest documents into vector memory
+    let doc_count = memory_index.ingest([
+        "docs/product_guide.pdf",
+        "docs/user_manual.pdf",
+        "docs/faq.txt"
+    ]);
+    
+    // Perform vector search
+    let relevant_docs = memory_index.vector_search("How to setup?", 5);
+    
+    // Generate context-aware response
+    let context = auto_rag_context();
+    let response = await ask("How do I setup the product? " + context, "gpt-4");
+    
+    // Validate response quality
+    let confidence = confidence_score(response);
+    let is_valid = validate_response(response, "factual");
+    
+    if confidence > 0.8 && is_valid {
+        return response;
+    } else {
+        // Fallback with different model
+        return await ask_with_fallback(
+            "gpt-4,claude-3-5-sonnet-20241022,gemini-1.5-pro",
+            "How do I setup the product? " + context
+        );
+    }
+}
+
+// Model arbitrage for critical decisions
+async fn strategic_analysis() {
+    let consensus = await model_arbitrage(
+        "Market expansion strategy for Q2 2024",
+        "gpt-4,claude-3-5-sonnet-20241022,gemini-1.5-pro",
+        3
+    );
+    
+    return consensus;
+}
+
+// Session-based conversation
+async fn customer_support_session() {
+    let session_id = "customer_001";
+    
+    // Start conversation
+    let greeting = await session_ask(session_id, "Hello, how can I help?", "gpt-4");
+    
+    // Continue conversation with context
+    let response1 = await session_ask(session_id, "I need help with billing", "gpt-4");
+    let response2 = await session_ask(session_id, "Show me my recent charges", "gpt-4");
+    
+    // Summarize session
+    let summary = session_summarize(session_id, {
+        include_sentiment: true,
+        extract_action_items: true
+    });
+    
+    return summary;
+}
+
+// Main execution
+async fn main() {
+    print("🎯 LEXON Demo - AI-Native Programming with Async/Await");
+    
+    // Run analysis
+    let feedback_report = await analyze_customer_feedback();
+    print("📋 Feedback Analysis: " + feedback_report);
+    
+    // Create dashboard
+    let dashboard = await create_dashboard();
+    print("📊 Dashboard Files: " + get_multioutput_files(dashboard).length);
+    
+    // Process data
+    let top_products = process_sales_data();
+    print("🏆 Top Products: " + top_products);
+    
+    // Smart search
+    let search_result = await smart_search();
+    print("🔍 Search Result: " + search_result);
+    
+    // Strategic analysis
+    let strategy = await strategic_analysis();
+    print("📈 Strategy: " + strategy);
+    
+    print("✅ Demo completed successfully!");
+}
+
+// Execute main function
+main(); 
