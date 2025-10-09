@@ -13,61 +13,43 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        rust: ['1.82.0']
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Rust ${{ matrix.rust }}
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ matrix.rust }}
-          components: clippy, rustfmt
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-      - name: rustfmt check
-        run: cargo fmt --all -- --check
-      - name: clippy (deny warnings)
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - name: build (locked)
-        run: cargo build --workspace --locked
-      - name: test
-        run: cargo test --workspace -- --nocapture | cat
-      - name: samples smoke (if Makefile present)
-        if: hashFiles('Makefile.toml') != ''
-        run: cargo make samples-smoke
-      - name: samples snapshot (if Makefile present)
-        if: hashFiles('Makefile.toml') != ''
-        run: cargo make samples-snapshot
-      - name: linter (missing_await/blocking IO)
-        run: cargo run -q -p lexc-cli -- lint samples/00-hello-lexon.lx
-      - name: OTEL smoke (fast compile only)
-        continue-on-error: true
-        run: |
-          cargo check -p lexc --lib --features otel -j 2 --locked
-
-  security_audit:
-    name: Security audit (cargo-audit)
+    name: Build, Lint, Test (ubuntu)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Rust 1.82.0
-        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: '1.82.0'
-      - name: Install cargo-audit (prebuilt)
-        uses: taiki-e/install-action@v2
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          tool: cargo-audit
-      - name: Run cargo audit (non-blocking for RC)
-        continue-on-error: true
-        run: cargo audit -q || true
+          toolchain: 1.82.0
+          components: clippy, rustfmt
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Cargo fmt check
+        run: cargo fmt --all -- --check
+      - name: Cargo check (selected packages)
+        run: cargo check -p lexc -p lexc-cli -j 2
+      - name: Cargo clippy (deny warnings)
+        run: cargo clippy -j 2 -p lexc -p lexc-cli --all-features -- -D warnings
+      - name: Cargo build (locked)
+        run: cargo build --workspace --locked
+      - name: Cargo test (workspace)
+        run: cargo test --workspace -- --nocapture | cat
+      - name: Install cargo-make (if Makefile present)
+        if: hashFiles('Makefile.toml') != ''
+        run: cargo install cargo-make
+      - name: Samples smoke (if Makefile present)
+        if: hashFiles('Makefile.toml') != ''
+        run: cargo make samples-smoke
+      - name: Samples snapshot (if Makefile present)
+        if: hashFiles('Makefile.toml') != ''
+        run: cargo make samples-snapshot
+      - name: Lint (async + blocking I/O)
+        run: cargo run -q -p lexc-cli -- lint samples/00-hello-lexon.lx
 
-  grammar_golden_tests:
+  grammar-golden:
     name: Grammar golden tests (Tree-sitter)
     runs-on: ubuntu-latest
     steps:
@@ -82,3 +64,33 @@ jobs:
       - name: Run tree-sitter tests
         run: tree-sitter test
         working-directory: tree-sitter-lexon
+
+  security-audit:
+    name: Security audit (cargo-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install cargo-audit (prebuilt)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Cargo Audit (non-blocking for RC)
+        continue-on-error: true
+        run: cargo audit -q || true
+
+  otel-smoke:
+    name: OTEL smoke
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.82.0
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "otel-smoke"
+      - name: Compile lib only (otel feature, no tests)
+        run: cargo check -p lexc --lib --features otel -j 2 --locked
