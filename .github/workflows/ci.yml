@@ -97,7 +97,7 @@ jobs:
   public-api-diff:
     name: Public API diff (cargo-semver-checks)
     runs-on: ubuntu-latest
-    if: github.event_name == "push" || github.event_name == "workflow_dispatch"
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
