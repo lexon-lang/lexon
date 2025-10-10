@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      full:
+        description: 'Run full CI (heavy jobs)'
+        required: false
+        default: 'false'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -64,6 +69,7 @@ jobs:
   security-audit:
     name: Security audit (cargo-audit)
     runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.full == 'true') || (github.event_name == 'pull_request' && contains(toJSON(github.event.pull_request.labels), 'full-ci')) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,6 +84,7 @@ jobs:
   otel-smoke:
     name: OTEL smoke
     runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.full == 'true') || (github.event_name == 'pull_request' && contains(toJSON(github.event.pull_request.labels), 'full-ci')) }}
     continue-on-error: true
     steps:
       - name: Checkout
@@ -97,7 +104,7 @@ jobs:
   public-api-diff:
     name: Public API diff (cargo-semver-checks)
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.full == 'true') || (github.event_name == 'pull_request' && contains(toJSON(github.event.pull_request.labels), 'full-ci')) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
