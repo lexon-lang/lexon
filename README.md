@@ -204,6 +204,13 @@ Activation: open any `.lx` file; status bar shows “Lexon”, syntax highlighti
 
 Requirements: Python 3.9+, pip, maturin.
 
+Optional: use a virtual environment
+```bash
+# from v1.0.0-rc.1/
+python3 -m venv .venv && . .venv/bin/activate
+python -m pip install --upgrade pip maturin
+```
+
 Install (editable):
 ```bash
 make python-dev-install
