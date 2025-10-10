@@ -1,44 +1,46 @@
 # Shipping Lexon v1.0.0‑rc.1: a practical LLM‑native programming language
 
-Lexon brings orchestration, validation, sessions/RAG, async/await, and multioutput into a single coherent DSL. This RC ships the core language/runtime, CLI, VS Code extension, Python binding, and CI.
+Lexon is an AI‑native DSL that treats orchestration, validation, sessions/RAG, async/await, and multioutput as first‑class language features. This RC ships the core runtime, CLI, VS Code extension, Python binding, and a stable CI.
 
-## Why a language for LLMs?
-SDK calls alone don’t solve concurrency, validation, artifacts, or repeatability. Lexon elevates these as built‑ins so teams can deliver reliable AI features with less glue code.
+## Why now
+Teams struggle to bolt LLMs into products with ad‑hoc glue code. Concurrency, reliability, artifacts, and cost control live outside typical SDKs. Lexon elevates these as built‑ins so you can ship reliable AI features faster.
 
-## What’s in v1.0.0‑rc.1
-- Orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`.
-- Validation (MVP): `ask_safe`, `confidence_score`, `validate_response`.
-- Sessions and context: summarization, compression, key points, context‑window management.
-- RAG Lite: ingest, vector search, automatic context.
-- Multioutput: a single call that returns text + multiple files + metadata (incl. binary).
-- Iterators/FP: `range`, `map`, `filter`, `reduce`, `zip`, `flatten`, `unique`, `sort`, `reverse`, `chunk`, `find`, `count`.
-- Async/await runtime with timeouts and cancellation.
-- Tooling: `lexc-cli`, linter for async issues, optional OpenTelemetry, VS Code extension, Python binding.
+## What’s in rc.1 (implemented)
+- Orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`
+- Validation (MVP): `ask_safe`, `confidence_score`, `validate_response`
+- Sessions/RAG Lite: ingest, vector search, automatic context, summarization, compression, key points
+- Multioutput: text + multiple files (incl. binary) in one call with metadata
+- Iterators/FP: `range`, `map`, `filter`, `reduce`, `zip`, `flatten`, `unique`, `sort`, `reverse`, `chunk`, `find`, `count`
+- Async runtime with cancellation and timeouts
+- Tooling: `lexc-cli`, linter for async issues, optional OTEL, VS Code extension, Python binding
 
-## Configuration (real vs simulated)
-Lexon runs simulated by default for determinism. To switch to real providers, set `[system].default_provider` and export API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`). Provider base URLs can be overridden for proxies.
+The single source of truth for runnable coverage is the verified demo:
+`docs/reference/examples/lexon_verified_demo_working.lx`.
 
-## End‑to‑end examples
-- Orchestration pipelines with parallel+merge and fallback.
-- RAG: ingest → vector search → `auto_rag_context()` → `ask`.
-- Multioutput: generate HTML/CSS/JSON artifacts in one operation.
-
-## Safety and observability
-Sandboxed by default: `execute()` requires `--allow-exec`, absolute paths require `--workspace`. Telemetry is opt‑in via `LEXON_OTEL=1` and `OTEL_EXPORTER_OTLP_ENDPOINT`.
-
-## Value and monetization
-Teams get measurable validation, deterministic artifacts, and RAG workflows out‑of‑the‑box. A viable path: open‑core + managed cloud (routing/cache/policies), enterprise features (governance/audit/SSO), team plans and support, plus a plugin marketplace.
-
-## Code quality and GA readiness
-The RC builds cleanly, CI gates are in place, and docs include an API index and quickstarts. For GA we plan to reduce default debug verbosity, add snapshot tests for multioutput/RAG, and include a few real‑provider smoke tests.
-
-## Try it
+## Quick start
 ```bash
-cargo build --workspace
-cargo run -q -p lexc-cli -- compile --run samples/00-hello-lexon.lx
+# build CLI
+cargo build --release -p lexc-cli
+# run the hello sample (simulated provider by default)
+./target/release/lexc-cli -- compile --run samples/00-hello-lexon.lx
 ```
-Real providers quickstart is in the README and DOCUMENTATION.
+Switching to real providers is documented in README (set default provider and export API keys).
 
-Feedback and contributions are welcome—especially around providers, validators, and iterator extensions.
+## Design principles
+- Language‑level async/await across LLM, data and I/O
+- Deterministic, offline‑first samples and goldens
+- Safety by default (sandbox, explicit opt‑ins)
+- Observability via opt‑in OpenTelemetry
 
+## Road to GA
+- Enrich validation strategies and snapshot tests for multioutput/RAG
+- Add a few real‑provider smoke tests gated by env keys
+- Reduce default verbosity; improve error messages and docs
 
+## Get involved
+- Try the samples, open an issue, or propose a provider/validator.
+- VS Code extension lives in `vscode-lexon/` (prebuilt VSIX included).
+- Python binding (`crates/lexon-py`) exposes compile/run primitives.
+
+## License
+Apache-2.0

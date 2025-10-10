@@ -179,7 +179,7 @@ To contribute to this extension:
 
 ## License
 
-MIT License - see LICENSE file for details.
+Licensed under Apache-2.0. See LICENSE at the repo root.
 
 ---
 
