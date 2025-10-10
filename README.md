@@ -1,22 +1,10 @@
+![Lexon](assets/lexon-wordmark.svg)
+
 ## Lexon v1.0.0-rc.1
 
 A self-contained RC of the Lexon language and tooling: language/runtime, CLI, samples, Tree-sitter grammar, VS Code extension, and Python binding.
 
 ### What is Lexon?
-### Install
-
-- Prereqs: rustup + Rust stable (pinned by `rust-toolchain.toml`).
-- Build CLI locally:
-```bash
-cargo build --release -p lexc-cli
-target/release/lexc-cli --help
-```
-- Or install into cargo bin:
-```bash
-cargo install --path lexc-cli
-lexc-cli --help
-```
-
 Lexon is an LLM-first programming language, built with extensive AI‑assisted development ("vibe coding"). It provides first-class async/await, LLM orchestration (parallelism, merge, fallback, ensemble), functional data processing, multioutput generation, session memory, and native validation (anti‑hallucination).
 
 Quick taste:
