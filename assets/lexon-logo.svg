@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5b8cff"/>
+      <stop offset="100%" stop-color="#9a6bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="32" fill="#0b1020"/>
+  <!-- Stylized L (async arc) -->
+  <path d="M160 96 v240 a64 64 0 0 0 64 64 h192" fill="none" stroke="url(#g)" stroke-width="40" stroke-linecap="round"/>
+  <!-- Orbit rings (LLM orchestration) -->
+  <circle cx="352" cy="224" r="96" fill="none" stroke="#1e2748" stroke-width="12"/>
+  <circle cx="352" cy="224" r="64" fill="none" stroke="#253059" stroke-width="10"/>
+  <!-- Node dots -->
+  <circle cx="352" cy="128" r="10" fill="#9a6bff"/>
+  <circle cx="448" cy="224" r="10" fill="#5b8cff"/>
+  <circle cx="352" cy="320" r="10" fill="#7a7dff"/>
+</svg>
