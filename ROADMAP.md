@@ -1,6 +1,6 @@
 ## RC Roadmap Snapshot
 
-This is a snapshot for v1.0.0-rc.1. For the evolving plan, see the root ROADMAP.md.
+This roadmap reflects the v1.0.0-rc.1 scope and is the authoritative plan for this RC bundle.
 
 ### Implemented in this RC
 - Core: `typeof`, `Ok`, `Error`, `is_ok`, `is_error`, `unwrap`.
