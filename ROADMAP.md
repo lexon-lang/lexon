@@ -17,13 +17,13 @@ This is a snapshot for v1.0.0-rc.1. For the evolving plan, see the root ROADMAP.
 - Config: `set_default_model`, `get_provider_default`, `lexon.toml`.
 - Tooling: CLI `compile`, `bench`, `lint`; VSIX; CI in bundle.
 
-### Focus to GA (granular)
+### Planned for GA (granular)
 - Anti‑hallucination: `ask_with_validation`, `confidence_score`, domain validators; enrich `validate_response` strategies.
 - Sessions: add `session_summarize`, `session_compress`, `context_merge/retrieve`.
 - RAG: real embeddings, `auto_rag_context` end‑to‑end, hybrid search.
 - CLI: `run`, `config`, `new`; improve `lint` rules (blocking I/O, missing await).
 - Telemetry: default OTEL templates, spans for data/memory/LLM; sampling.
-- Multioutput: incremental streaming API, binarios no text‑like, per‑file metadata, callbacks/progreso, límites y validaciones.
+- Multioutput: incremental streaming API, non text‑like binaries, per‑file metadata, callbacks/progress, limits and validations.
 - Providers: routing policies (cost/latency), health checks.
 
 ### LLM‑first completeness plan 
@@ -31,29 +31,29 @@ This is a snapshot for v1.0.0-rc.1. For the evolving plan, see the root ROADMAP.
   - Prompt templates/versioning, prompt registry per project.
   - Evals datasets, golden tests, coverage, automatic metrics (exact, BLEU/ROUGE, task metrics).
 - Tool calling & permissions
-  - Tool registry con scopes/permissions y policies (allowlist/denylist, quotas).
-  - Integración MCP (1.1) con perfiles de permisos y auditoría.
-- Streaming estructurado
-  - API de streaming para LLM (tokens/chunks + metadata) y Multioutput (progreso por archivo).
+  - Tool registry with scopes/permissions and policies (allowlist/denylist, quotas).
+  - MCP integration (1.1) with permission profiles and auditing.
+- Structured streaming
+  - Streaming API for LLM (tokens/chunks + metadata) and Multioutput (per‑file progress).
 - Stdlib & infra
-  - http/ws cliente, timers/sleep, path utils, zip/crypto básicos.
-  - Secrets manager y perfiles de sandbox/policies.
+  - http/ws client, timers/sleep, path utils, basic zip/crypto.
+  - Secrets manager and sandbox/policy profiles.
 - Dev UX & packaging
-  - `lexc new`, scaffold de proyecto/módulos/deps; `lexc run`; REPL y debugging básico.
+  - `lexc new` (project/modules/deps scaffold); `lexc run`; REPL and basic debugging.
 - Testing
-  - Framework de tests nativo (assert/fixtures), snapshot tests, property/fuzz para DSL.
-- Costes, cuotas y fiabilidad
-  - Presupuestos por ejecución, rate limiting, retry/backoff unificado.
+  - Native testing framework (assert/fixtures), snapshot tests, property/fuzz for the DSL.
+- Cost, quotas and reliability
+  - Per‑execution budgets, rate limiting, unified retry/backoff.
 - Routing/providers
-  - A/B y canary, health checks, políticas por coste/latencia/capacidad, selección automática de modelo.
-- Persistencia
-  - Stores durables para session/memory/cache con TTL/GC.
-- Observabilidad
-  - Cobertura total de tracing/metrics/logs, SLOs, dashboards listos (OTEL).
-- Publicación & distro
-  - Binarios/containers oficiales, plugin/SDK estable.
-- Procesos & docs
-  - API Freeze formal, niveles de estabilidad, guías de migración.
+  - A/B & canary, health checks, policies by cost/latency/capacity, automatic model selection.
+- Persistence
+  - Durable stores for session/memory/cache with TTL/GC.
+- Observability
+  - Full coverage of tracing/metrics/logs, SLOs, ready‑made dashboards (OTEL).
+- Publishing & distribution
+  - Official binaries/containers, stable plugin/SDK.
+- Processes & docs
+  - Formal API Freeze, stability levels, migration guides.
 
 ### Missing or experimental (post‑GA)
 - Validation: `ask_verified`, `configure_validation`, `hallucination_detect`.
@@ -109,13 +109,13 @@ This is a snapshot for v1.0.0-rc.1. For the evolving plan, see the root ROADMAP.
   - lexc repl, lexc config, lexc new, lexc run (subcomando dedicado)
 
 ### MCP server support (target: 1.1)
-- Core loop: JSON‑RPC 2.0 over stdio (primero) y WebSocket (opcional).
-- Tool registry: exponer funciones Lexon como herramientas MCP con validación de aridad/tipos.
-- Concurrencia y cancelación: mapear `CancellationToken/TaskHandle` a cancel requests; timeouts configurables.
-- Señales y lifecycle: SIGINT/SIGTERM → cancel/cleanup; cierre ordenado.
-- Seguridad: sandbox de I/O y `execute()` opt‑in; límites de tamaño/duración.
-- Configuración: `lexon.toml` + env; selección de proveedor/modelo por tool.
-- Observabilidad: spans por request/response, contadores de errores y latencias.
-- Paquetes: subcomando `lexc mcp` con flags (`--stdio`, `--ws`, `--workspace`, `--allow-exec`).
+- Core loop: JSON‑RPC 2.0 over stdio (first) and WebSocket (optional).
+- Tool registry: expose Lexon functions as MCP tools with arity/type validation.
+- Concurrency & cancellation: map `CancellationToken/TaskHandle` to cancel requests; configurable timeouts.
+- Signals & lifecycle: SIGINT/SIGTERM → cancel/cleanup; orderly shutdown.
+- Security: I/O sandbox and `execute()` opt‑in; size/duration limits.
+- Configuration: `lexon.toml` + env; provider/model selection per tool.
+- Observability: spans per request/response, error/latency counters.
+- Packaging: `lexc mcp` subcommand with flags (`--stdio`, `--ws`, `--workspace`, `--allow-exec`).
 
 
