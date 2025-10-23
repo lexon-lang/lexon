@@ -26,6 +26,9 @@ This roadmap reflects the v1.0.0-rc.1 scope and is the authoritative plan for th
 - Multioutput: incremental streaming API, non text‑like binaries, per‑file metadata, callbacks/progress, limits and validations.
 - Providers: routing policies (cost/latency), health checks.
 
+### P1 (high value)
+- Parquet I/O: `load_parquet(path) -> dataset`, `save_parquet(dataset, path) -> bool`.
+
 ### LLM‑first completeness plan 
 - Prompting & evaluation
   - Prompt templates/versioning, prompt registry per project.

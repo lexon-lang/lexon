@@ -4,6 +4,11 @@
 
 A self-contained RC of the Lexon language and tooling: language/runtime, CLI, samples, Tree-sitter grammar, VS Code extension, and Python binding.
 
+### Why Lexon (quick)
+- Orchestrate LLM + data as first-class language features (async/await, parallel/merge/fallback/ensemble).
+- Built-in reliability: validation (`ask_safe`) with confidence scoring; sessions/RAG Lite.
+- Deterministic artifacts: multioutput (text + multiple files/binaries) from a single operation.
+
 ### What is Lexon?
 Lexon is an LLM-first programming language, built with extensive AI‑assisted development ("vibe coding"). It provides first-class async/await, LLM orchestration (parallelism, merge, fallback, ensemble), functional data processing, multioutput generation, session memory, and native validation (anti‑hallucination).
 
@@ -36,6 +41,19 @@ cargo run -q -p lexc-cli -- compile --run samples/00-hello-lexon.lx
 - Full Project Roadmap: [../ROADMAP.md](../ROADMAP.md)
 - Release Notes: [RELEASE_NOTES.md](RELEASE_NOTES.md)
 - Blog Draft: [blog_post.md](blog_post.md)
+
+### 5-minute recipes (copy/paste)
+- Mini‑ETL (medallion‑lite):
+```bash
+cargo run -q -p lexc-cli -- compile --run samples/etl/mini_medallion.lx
+```
+Generates `output/etl_top_high.json` (filtered CSV) and `output/etl_report.md` (LLM summary). Uses real LLM if keys are set; otherwise simulated.
+
+- Notes organizer:
+```bash
+cargo run -q -p lexc-cli -- compile --run samples/notes/organizer.lx
+```
+Creates `output/notes_ActionItems.md` and `output/notes_Summary.json` from a small note set using `ask_merge("synthesize")` and `ask_safe`.
 
 ### Configuration (summary)
 - Modes: simulated (default) vs real provider calls.

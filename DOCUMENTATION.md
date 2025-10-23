@@ -184,7 +184,32 @@ Full API index (implemented in this RC):
 
 ---
 
-### 22. CLI and tooling (implemented)
+### 22. Advanced orchestration (debate & dialogue)
+
+- `model_arbitrage(topic: string, models: string | [string], decider?: string, rounds?: int) -> string`
+  - Runs a lightweight multi‑model debate and returns a consensus string.
+  ```lexon
+  let consensus = model_arbitrage(
+    "Should we invest in data quality this sprint?",
+    "gpt-4,claude-3-5-sonnet-20241022",
+    "gpt-4",
+    1
+  );
+  ```
+
+- `model_dialogue(participants: string, topic: string, rounds?: int) -> string`
+  - Structured dialogue among named participants producing a transcript.
+  ```lexon
+  let transcript = model_dialogue(
+    "AI Assistant 1, AI Assistant 2",
+    "Tradeoffs of validation vs recall",
+    2
+  );
+  ```
+
+---
+
+### 23. CLI and tooling (implemented)
 
 Commands in this RC:
 - `compile` — compile `.lx` and optionally run.
@@ -210,7 +235,7 @@ Python binding (preview):
 - Crate at `crates/lexon-py/`. Build with `maturin` and import as `lexon_py`.
 - Current scope: compile `.lx` to LexIR and run simple programs. Not all opcodes are executed yet.
 
-### 23. Linter rules (implemented)
+### 24. Linter rules (implemented)
 
 Run:
 ```bash
@@ -221,7 +246,7 @@ Rules:
 - `BlockingIoInAsync` — blocking file/network in async context.
 - `AsyncFunctionNotAwaited`, `SyncCallInAsyncContext` — additional async misuse.
 
-### 24. Telemetry (optional)
+### 25. Telemetry (optional)
 
 Build and enable:
 ```bash
@@ -231,7 +256,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 ```
 Emitted spans: key scheduler operations and LLM calls.
 
-### 25. Configuration (`lexon.toml`)
+### 26. Configuration (`lexon.toml`)
 
 Defaults are loaded from `lexon.toml` in this RC. Common keys:
 - `[system]` (mode/runtime): `default_provider`, `fallback_provider`, `fallback_model`, `cache_enabled`, `retry_attempts`, `timeout_default`
@@ -291,7 +316,7 @@ let r3 = ask("Say hello from Gemini", "gemini-1.5-pro");
 print(r3);
 ```
 
-### 26. Sessions API details
+### 27. Sessions API details
 
 Signatures:
 - `session_start(provider?: string, name?: string) -> string`
@@ -309,7 +334,7 @@ let r = session_ask(sid, "Hello");
 let s = session_summarize(sid, { max_len: 400 });
 ```
 
-### 27. RAG / Vector memory details
+### 28. RAG / Vector memory details
 
 Signatures:
 - `memory_index.ingest(paths: string | [string]) -> int`
@@ -320,7 +345,7 @@ Notes:
 - Ingest accepts CSV/JSON/NDJSON/text; builds a lightweight vector index.
 - `vector_search` returns top‑k matches with simple cosine similarity.
 
-### 28. Data operations
+### 29. Data operations
 
 Signatures:
 - `load_csv(path) -> dataset`, `save_csv(dataset, path) -> bool`
@@ -335,7 +360,7 @@ let f = data_filter(ds, "priority == 'high'");
 data_export(f, "output/high.json");
 ```
 
-### 29. Iterators and FP utilities
+### 30. Iterators and FP utilities
 
 Signatures:
 - `enumerate(array) -> [[index,value]]`
@@ -356,7 +381,7 @@ Notes:
 - Predicates and callbacks use string expressions in this RC (e.g., `'x % 2 == 0'`).
 - Advanced pipelines can be built by chaining `map`, `filter`, `reduce`, etc.
 
-### 30. Error taxonomy
+### 31. Error taxonomy
 
 The executor returns structured errors surfaced as runtime failures:
 - `ArgumentError` — wrong arity/type or invalid argument values.

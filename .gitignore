@@ -1,3 +1,8 @@
 target/
 .DS_Store
+.venv_lexon_smoke/
+output/
+test_data.csv
+sprint_a_*.txt
+sprint_a_*.json
 

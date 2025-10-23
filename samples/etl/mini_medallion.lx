@@ -1,0 +1,38 @@
+// Mini‑Medallion ETL: CSV -> filter/select -> enrich with ask_safe -> artifacts
+// Use real LLM if keys are present (sets default model)
+set_default_model("gpt-4");
+
+// 1) Bronze: ingest
+let ds = data_load("samples/data/triage/tickets.csv");
+
+// 2) Silver: filter + take (keep all original columns)
+let high = data_filter(ds, "priority == 'high'");
+let top = data_take(high, 5);
+
+// 3) Gold: enrich & summarize with validation
+let summary = ask_merge(
+  [
+    "Summarize top high‑priority tickets in two bullet points.",
+    "List owners and a short action for each ticket.",
+    "Identify one risk and one quick win.",
+  ],
+  "synthesize",
+);
+
+let validated = ask_safe {
+  user: "Produce a short, factual executive summary for the selected tickets";
+  model: "gpt-4";
+  validation: "basic";
+  confidence_threshold: 0.8;
+};
+
+// 4) Artifacts
+save_json(top, "output/etl_top_high.json");
+let mo = ask_multioutput(
+  "Create a brief markdown report for the filtered tickets",
+  ["etl_report.md"]
+);
+save_multioutput_file(mo, 0, "output/etl_report.md");
+
+print("ETL mini‑medallion completed");
+

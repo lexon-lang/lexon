@@ -1,0 +1,39 @@
+// Notes Organizer: group notes, synthesize summary, extract action items
+// Prefer real LLM if configured
+set_default_model("gpt-4");
+
+let notes = [
+  "Call supplier to confirm delivery dates",
+  "Draft blog outline about Lexon orchestration",
+  "Team retro next Tuesday 10am",
+  "Investigate CSV ingestion performance",
+];
+
+// Parallel ideas -> merged synthesis
+let merged = ask_merge(
+  [
+    "Summarize notes into themes",
+    "Extract deadlines and events",
+    "Propose next steps for the week",
+  ],
+  "synthesize",
+);
+
+// Validate short action list
+let actions = ask_safe {
+  user: "From these notes, produce a bullet list of action items with owners";
+  model: "gpt-4";
+  validation: "basic";
+  confidence_threshold: 0.8;
+};
+
+// Artifacts
+let out = ask_multioutput(
+  "Create two files: ActionItems.md and Summary.json",
+  ["ActionItems.md", "Summary.json"]
+);
+save_multioutput_file(out, 0, "output/notes_ActionItems.md");
+save_multioutput_file(out, 1, "output/notes_Summary.json");
+
+print("Notes organizer completed");
+
