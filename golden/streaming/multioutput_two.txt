@@ -1,0 +1,12 @@
+[stream] multioutput_two start
+STREAM_EVENT {"type":"multioutput","stage":"start","files":2}
+STREAM_EVENT {"type":"multioutput","stage":"file_start","index":0,"name":"a.txt"}
+STREAM_EVENT {"type":"multioutput","stage":"file_done","index":0,"name":"a.txt","bytes":<NUM>}
+STREAM_EVENT {"type":"multioutput","stage":"file_start","index":1,"name":"b.txt"}
+STREAM_EVENT {"type":"multioutput","stage":"file_done","index":1,"name":"b.txt","bytes":<NUM>}
+STREAM_EVENT {"type":"multioutput","stage":"end"}
+STREAM_EVENT {"type":"file_write","path":"samples/streaming/out2.txt","written":<NUM>,"total":<NUM>}
+STREAM_EVENT {"type":"file_write_done","path":"samples/streaming/out2.txt","bytes":<NUM>}
+[stream] multioutput_two end
+
+

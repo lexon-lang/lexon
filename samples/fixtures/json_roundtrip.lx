@@ -1,0 +1,4 @@
+// Fixtures JSON roundtrip
+write_file("samples/fixtures/obj.json", "{\"a\":1,\"b\":\"x\"}");
+let v = fixtures__load_json("obj.json");
+print(v);

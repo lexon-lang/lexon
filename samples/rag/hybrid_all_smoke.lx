@@ -1,0 +1,12 @@
+// Hybrid search all-pages smoke (local backend)
+
+set_default_model("simulated");
+
+let ing = memory_index.ingest(["README.md","ROADMAP.md"]);
+print("ingested=");
+print(ing);
+
+let all = memory_index__hybrid_search_all("Lexon", 2, 2, 4, {"alpha":0.7});
+print(all);
+
+

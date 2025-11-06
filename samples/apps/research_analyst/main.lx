@@ -1,0 +1,81 @@
+// Lexon Research Analyst — end-to-end demo exercising major language features
+print("=== Lexon Research Analyst ===");
+
+// Utility functions (functions + typed args/returns)
+fn ensure_ok(ok: bool, context: string) -> bool {
+  if (!ok) { /* error control (non-fatal): could log or escalate */ }
+  ok
+}
+
+// (Temporarily avoid additional function until full return typing is enabled for arrays)
+
+// 1) Configuration and session setup (deterministic by default)
+set_default_model("simulated");
+let sid = session_start("simulated", "research_demo");
+
+// 2) Ingest minimal fixtures and index as memory (RAG)
+let _ = memory_index__set_metadata("samples/00-hello-lexon.lx", "{ \"category\": \"hello\" }");
+let _ing: int = memory_index.ingest(["samples/00-hello-lexon.lx"]);
+
+// 3) Hybrid search (lite)
+let _ctx = auto_rag_context();
+let _ = memory_index.vector_search("hello lexon", 2);
+
+// 4) Quick ETL (CSV load + filter + export)
+let max_rows: int = 2;
+let _ok = save_csv(data_take(data_load("samples/triage/tickets.csv"), max_rows), "output/ra_top.csv");
+let _ = ensure_ok(_ok, "save_csv: output/ra_top.csv");
+
+// 5) Agents orchestration (basic chain)
+let model = get_env_or("LEXON_MODEL", "simulated");
+let agent = agent_create("summarizer", {"model": model, "budget_usd": 0.01, "deadline_ms": 1000});
+let steps = [
+  "Summarize top issues in 1-2 lines.",
+  "Extract 3 concrete actions."
+];
+let _chain_res = agent_chain(agent, steps);
+
+// Iterate over steps (for-in loop demo) without changing outputs
+for s in steps {
+  if (s == "") { /* no-op */ }
+}
+
+// While-like effect (single increment; avoid unsupported comparison in while)
+let attempts: int = 0;
+attempts = attempts + 1;
+
+// 6) Debate & arbitration
+let consensus = ask_ensemble([
+  "Provide a concise summary of the repository scope",
+  "Summarize the main capabilities of Lexon"
+], "MajorityVote", "simulated");
+let arb = model_arbitrage("Should we enable real providers by default for demos?", "simulated", "simulated", 1);
+
+// 7) Anti-hallucination (basic)
+let safe = ask_safe {
+  user: "Name the project and one key feature";
+  validation: "basic";
+  confidence_threshold: 0.6;
+};
+
+// 8) Streaming + multioutput (deterministic files)
+let mo = ask_multioutput("Create a short report and a CSV with 2 rows", ["report.md", "appendix.csv"]);
+save_binary_file_stream(mo, "output/ra_report.md");
+save_multioutput_file(mo, 1, "output/ra_appendix.csv");
+
+// 9) MCP tool call (safe read) — stdio mode, allowlist enforced by CLI flags
+let _ = mcp__tool_call("read_file", { path: "samples/00-hello-lexon.lx" });
+
+// 10) Metrics rollup export (Prometheus text)
+let _met_ok = metrics__export_prometheus("output/ra_metrics.prom");
+
+// 11) Session summarize/compress
+let _ = session_ask(sid, "Capture key conclusions of the report.");
+let _sum = session_summarize(sid, { max_len: 200 });
+let _cmp = session_compress(sid, { ratio: 0.5 });
+
+print("CONSENSUS:\n" + consensus);
+print("ARBITRAGE:\n" + arb);
+print("SAFE:\n" + safe);
+print("OK Research Analyst");
+

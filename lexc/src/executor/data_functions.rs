@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use super::{ExecutionEnvironment, ExecutorError, RuntimeValue};
 use crate::telemetry::trace_data_operation;
+use std::io::Write;
 
 impl ExecutionEnvironment {
     /// Handle load_csv function - Load CSV data into memory
@@ -419,6 +420,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        let _ = self.before_tool_call("read_file");
         if args.len() != 1 {
             return Err(ExecutorError::ArgumentError(
                 "read_file requires exactly 1 argument: file path".to_string(),
@@ -447,10 +449,12 @@ impl ExecutionEnvironment {
                 if let Some(res) = result {
                     self.store_value(res, RuntimeValue::String(content))?;
                 }
+                self.after_tool_event("read_file", true, None);
             }
             Err(e) => {
                 let error_msg = format!("Failed to read file '{}': {}", path, e);
                 println!("❌ read_file: {}", error_msg);
+                self.after_tool_event("read_file", false, Some(&error_msg));
                 return Err(ExecutorError::RuntimeError(error_msg));
             }
         }
@@ -463,6 +467,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         _result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        let _ = self.before_tool_call("write_file");
         if args.len() != 2 {
             return Err(ExecutorError::ArgumentError(
                 "write_file requires exactly 2 arguments: path and content".to_string(),
@@ -490,12 +495,11 @@ impl ExecutionEnvironment {
         println!("📝 write_file: Writing to file '{}'", path);
         let _span = trace_data_operation("write_file", content.len());
         match std::fs::write(&path, content) {
-            Ok(_) => {
-                println!("✅ write_file: Successfully wrote to '{}'", path);
-            }
+            Ok(_) => { println!("✅ write_file: Successfully wrote to '{}'", path); self.after_tool_event("write_file", true, None); }
             Err(e) => {
                 let error_msg = format!("Failed to write file '{}': {}", path, e);
                 println!("❌ write_file: {}", error_msg);
+                self.after_tool_event("write_file", false, Some(&error_msg));
                 return Err(ExecutorError::RuntimeError(error_msg));
             }
         }
@@ -508,6 +512,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         _result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        let _ = self.before_tool_call("save_file");
         if args.len() != 2 {
             return Err(ExecutorError::ArgumentError(
                 "save_file requires exactly 2 arguments: content and path".to_string(),
@@ -535,12 +540,11 @@ impl ExecutionEnvironment {
         println!("💾 save_file: Writing to file '{}'", path);
         let _span = trace_data_operation("save_file", content.len());
         match std::fs::write(&path, content) {
-            Ok(_) => {
-                println!("✅ save_file: Successfully wrote to '{}'", path);
-            }
+            Ok(_) => { println!("✅ save_file: Successfully wrote to '{}'", path); self.after_tool_event("save_file", true, None); }
             Err(e) => {
                 let error_msg = format!("Failed to write file '{}': {}", path, e);
                 println!("❌ save_file: {}", error_msg);
+                self.after_tool_event("save_file", false, Some(&error_msg));
                 return Err(ExecutorError::RuntimeError(error_msg));
             }
         }
@@ -578,7 +582,32 @@ impl ExecutionEnvironment {
                         "No binary files found in MultiOutput".to_string(),
                     ));
                 }
-                self.save_binary_file(&binary_files[0], &path)?;
+                // Limits
+                let max_bytes: usize = std::env::var("LEXON_MULTI_MAX_FILE_BYTES").ok().and_then(|v| v.parse().ok()).unwrap_or(10 * 1024 * 1024);
+                let file = &binary_files[0];
+                if file.size > max_bytes {
+                    return Err(ExecutorError::RuntimeError(format!("File exceeds limit: {} bytes > {}", file.size, max_bytes)));
+                }
+                // Progress start
+                println!("📦 save_binary_file: 1/1 starting '{}' ({} bytes)", file.name, file.size);
+                self.after_tool_event("multioutput.save_progress", true, None);
+                // Retry with basic backoff
+                let mut attempts = 0u32;
+                let max_attempts: u32 = std::env::var("LEXON_MULTI_SAVE_RETRIES").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+                let backoff_ms: u64 = std::env::var("LEXON_MULTI_SAVE_BACKOFF_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(100);
+                loop {
+                    match self.save_binary_file(file, &path) {
+                        Ok(_) => { println!("✅ save_binary_file: completed '{}'", file.name); self.after_tool_event("multioutput.save_progress", true, None); break },
+                        Err(e) => {
+                            if attempts >= max_attempts { return Err(e); }
+                            attempts += 1;
+                            std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
+                            println!("↻ save_binary_file: retry {} for '{}'", attempts, file.name);
+                            self.after_tool_event("multioutput.save_progress", false, Some("retry"));
+                            continue;
+                        }
+                    }
+                }
             }
             _ => {
                 return Err(ExecutorError::ArgumentError(
@@ -636,5 +665,41 @@ impl ExecutionEnvironment {
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
         self.handle_read_file(args, result)
+    }
+
+    /// Handle save_binary_file_stream(multioutput, path) -> void (chunked writes with progress)
+    pub fn handle_save_binary_file_stream(
+        &mut self,
+        args: &[LexExpression],
+        _result: Option<&ValueRef>,
+    ) -> Result<(), ExecutorError> {
+        if args.len() != 2 {
+            return Err(ExecutorError::ArgumentError(
+                "save_binary_file_stream requires exactly 2 arguments: binary_file and path".to_string(),
+            ));
+        }
+        let file_value = self.evaluate_expression(args[0].clone())?;
+        let path_value = self.evaluate_expression(args[1].clone())?;
+        let path = match path_value { RuntimeValue::String(s)=>s, _=> return Err(ExecutorError::ArgumentError("path must be string".to_string())) };
+        match file_value {
+            RuntimeValue::MultiOutput { binary_files, .. } => {
+                if binary_files.is_empty() { return Err(ExecutorError::ArgumentError("No binary files found in MultiOutput".to_string())); }
+                let file = &binary_files[0];
+                let chunk_bytes: usize = std::env::var("LEXON_MULTI_CHUNK_BYTES").ok().and_then(|v| v.parse().ok()).unwrap_or(64 * 1024);
+                let mut f = std::fs::File::create(&path).map_err(|e| ExecutorError::RuntimeError(format!("open '{}': {}", path, e)))?;
+                let mut written: usize = 0;
+                while written < file.size {
+                    if self.cancel_requested { return Err(ExecutorError::RuntimeError("cancelled".to_string())); }
+                    let end = (written + chunk_bytes).min(file.size);
+                    let slice = &file.content[written..end];
+                    f.write_all(slice).map_err(|e| ExecutorError::RuntimeError(format!("write '{}': {}", path, e)))?;
+                    written = end;
+                    println!("STREAM_EVENT {{\"type\":\"file_write\",\"path\":{:?},\"written\":{},\"total\":{}}}", path, written, file.size);
+                }
+                println!("STREAM_EVENT {{\"type\":\"file_write_done\",\"path\":{:?},\"bytes\":{}}}", path, written);
+                Ok(())
+            }
+            _ => Err(ExecutorError::ArgumentError("save_binary_file_stream requires a MultiOutput with binary files".to_string())),
+        }
     }
 }

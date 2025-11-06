@@ -1,0 +1,34 @@
+📄 Vector Memory System initialized with SQLite backend
+🚀 ask_parallel: Processing 3 asks
+[INFO] [ask_operation] EVENT: ask_parallel: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-4"), user_prompt=Some("Explain AI in one sentence")
+🔍 DEBUG: Checking cache for key: "model=gpt-4;temp=0.7;sys=;user=Explain AI in one sentence;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 3.195142959s
+✅ ask_parallel: Completed 1/3
+[INFO] [ask_operation] COMPLETED in 3.222626625s
+[INFO] [ask_operation] EVENT: ask_parallel: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-4"), user_prompt=Some("Summarize machine learning")
+🔍 DEBUG: Checking cache for key: "model=gpt-4;temp=0.7;sys=;user=Summarize machine learning;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 4.190378125s
+✅ ask_parallel: Completed 2/3
+[INFO] [ask_operation] COMPLETED in 4.217448125s
+[INFO] [ask_operation] EVENT: ask_parallel: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-4"), user_prompt=Some("What is NLP?")
+🔍 DEBUG: Checking cache for key: "model=gpt-4;temp=0.7;sys=;user=What is NLP?;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 7.1683405s
+✅ ask_parallel: Completed 3/3
+[INFO] [ask_operation] COMPLETED in 7.173019334s
+[INFO] [ask_operation] EVENT: ask_merge: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-4"), user_prompt=Some("Consolidate these responses using summarize strategy:\n\nAI, or Artificial Intelligence, is a branch of computer science that involves the development of machines or software that can perform tasks which normally require human intelligence, like problem-solving, learning, perception, and language understanding.\n---\nMachine learning is a subfield of artificial intelligence (AI) that uses algorithms and statistical models to enable computer systems to learn from data and improve performance over time without being explicitly programmed. It involves training a model from input data to make predictions or decisions, rather than following strictly static program instructions. Machine learning is used in a variety of applications, such as email filtering, detection of network intruders, and computer vision. It can be categorized into supervised learning, unsupervised learning, semi-supervised learning, and reinforcement learning depending upon the nature of the learning \"signal\" or \"feedback\" available to a learning system.\n---\nNLP stands for Natural Language Processing. It is a branch of artificial intelligence that deals with the interaction between computers and humans through natural language. The ultimate objective of NLP is to read, decipher, understand, and make sense of the human language in a valuable way. It involves several complex processes like understanding, generating, and interpreting human language in a valuable way.\n\nConsolidated result:")
+🔍 DEBUG: Checking cache for key: "model=gpt-4;temp=0.3;sys=You are an expert at consolidating information.;user=Consolidate these responses using summarize strategy:\n\nAI, or Artificial Intelligence, is a branch of computer science that involves the development of machines or software that can perform tasks which normally require human intelligence, like problem-solving, learning, perception, and language understanding.\n---\nMachine learning is a subfield of artificial intelligence (AI) that uses algorithms and statistical models to enable computer systems to learn from data and improve performance over time without being explicitly programmed. It involves training a model from input data to make predictions or decisions, rather than following strictly static program instructions. Machine learning is used in a variety of applications, such as email filtering, detection of network intruders, and computer vision. It can be categorized into supervised learning, unsupervised learning, semi-supervised learning, and reinforcement learning depending upon the nature of the learning \"signal\" or \"feedback\" available to a learning system.\n---\nNLP stands for Natural Language Processing. It is a branch of artificial intelligence that deals with the interaction between computers and humans through natural language. The ultimate objective of NLP is to read, decipher, understand, and make sense of the human language in a valuable way. It involves several complex processes like understanding, generating, and interpreting human language in a valuable way.\n\nConsolidated result:;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 8.942234208s
+[INFO] [ask_operation] COMPLETED in 8.967508125s
+Artificial Intelligence (AI) is a sector of computer science focused on creating machines or software that can execute tasks typically requiring human intelligence, such as problem-solving, learning, perception, and language understanding. A subset of AI is Machine Learning, which employs algorithms and statistical models to allow computer systems to learn from data and enhance performance over time without explicit programming. It has various applications, including email filtering, network intruder detection, and computer vision. Machine learning can be divided into supervised, unsupervised, semi-supervised, and reinforcement learning based on the learning signal or feedback available. Another branch of AI is Natural Language Processing (NLP), which aims to facilitate interaction between computers and humans using natural language. NLP strives to read, decipher, understand, and interpret human language in a meaningful way.

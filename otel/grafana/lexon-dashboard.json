@@ -1,0 +1,150 @@
+{
+  "title": "Lexon Observability",
+  "schemaVersion": 38,
+  "version": 1,
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "LLM Calls",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{
+        "expr": "sum(lexon_llm_calls_total)",
+        "legendFormat": "calls"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM Latency (ms)",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+      "targets": [{
+        "expr": "rate(lexon_llm_latency_ms_sum[5m]) / rate(lexon_llm_latency_ms_count[5m])",
+        "legendFormat": "p50"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Estimated Cost (USD)",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 4},
+      "targets": [{
+        "expr": "rate(lexon_llm_cost_usd_sum[5m])",
+        "legendFormat": "cost"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Quality Overlay (Confidence)",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 8},
+      "targets": [{
+        "expr": "avg_over_time(lexon_answer_confidence_score[5m])",
+        "legendFormat": "confidence"
+      }]
+    },
+    {
+      "type": "logs",
+      "title": "Tool Events",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+      "targets": [{
+        "expr": "{app=\"lexon\", stream=\"tool_event\"}"
+      }]
+    }
+  ]
+}
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "type": "dashboard",
+        "name": "Annotations & Alerts",
+        "enabled": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "LLM Calls (total)",
+      "id": 1,
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "targets": [
+        {"refId": "A", "expr": "lexon_llm_calls_total"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "LLM Latency (ms, p50)",
+      "id": 2,
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.5, sum(rate(lexon_llm_latency_ms_bucket[5m])) by (le))"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Cost (USD, 5m)",
+      "id": 3,
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "targets": [
+        {"refId": "A", "expr": "sum(rate(lexon_llm_cost_usd_total[5m]))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM Calls by Model",
+      "id": 4,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {"refId": "A", "expr": "sum by(model) (rate(lexon_llm_calls_total{model!=""}[5m]))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Provider Health (up=1, down=0)",
+      "id": 5,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [
+        {"refId": "A", "expr": "avg by(provider) (lexon_provider_health)"}
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Tool Calls (5m)",
+      "id": 6,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [
+        {"refId": "A", "expr": "sum by(tool, status) (rate(lexon_tool_calls_total[5m]))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Errors (5m)",
+      "id": 7,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [
+        {"refId": "A", "expr": "sum(rate(lexon_errors_total[5m]))"}
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["lexon", "otel"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "Lexon Starter Dashboard (Stub)",
+  "version": 1
+}
+
+

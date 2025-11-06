@@ -10,7 +10,7 @@ A self-contained RC of the Lexon language and tooling: language/runtime, CLI, sa
 - Deterministic artifacts: multioutput (text + multiple files/binaries) from a single operation.
 
 ### What is Lexon?
-Lexon is an LLM-first programming language, built with extensive AI‑assisted development ("vibe coding"). It provides first-class async/await, LLM orchestration (parallelism, merge, fallback, ensemble), functional data processing, multioutput generation, session memory, and native validation (anti‑hallucination).
+Lexon is an LLM‑first programming language with first‑class async/await, LLM orchestration (parallelism, merge, fallback, ensemble), functional data processing, multioutput generation, session memory, and built‑in validation (anti‑hallucination). It emphasizes determinism (seeds, snapshots) and safe defaults (sandboxed I/O).
 
 Quick taste:
 ```lexon
@@ -37,8 +37,7 @@ cargo run -q -p lexc-cli -- compile --run samples/00-hello-lexon.lx
 
 ### Documentation
 - Documentation: [DOCUMENTATION.md](DOCUMENTATION.md)
-- RC Roadmap: [ROADMAP.md](ROADMAP.md)
-- Full Project Roadmap: [../ROADMAP.md](../ROADMAP.md)
+- Roadmap: [ROADMAP.md](ROADMAP.md)
 - Release Notes: [RELEASE_NOTES.md](RELEASE_NOTES.md)
 - Blog Draft: [blog_post.md](blog_post.md)
 
@@ -62,6 +61,8 @@ Creates `output/notes_ActionItems.md` and `output/notes_Summary.json` from a sma
 - API keys: set provider envs (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`).
 - Programmatic helpers: `set_default_model(model)`, `get_provider_default(provider)`.
 - Telemetry (optional): `LEXON_OTEL=1` and `OTEL_EXPORTER_OTLP_ENDPOINT`.
+- RAG/rerank knobs: `LEXON_RERANK_BATCH_SIZE`, `LEXON_RERANK_MAX_ITEMS`.
+- Vector store: `LEXON_VECTOR_BACKEND=sqlite_local|qdrant`, `LEXON_QDRANT_URL`, `LEXON_QDRANT_COLLECTION`, `LEXON_QDRANT_THROTTLE_MS`.
 - Sandbox: `--allow-exec` to enable `execute()`, `--workspace PATH` for absolute paths.
 
 See detailed configuration in `DOCUMENTATION.md`.
@@ -99,12 +100,18 @@ let r = ask("Say hello from a real provider");
 
 ### Key features
 - Async/await across LLM, data, and file I/O
-- LLM orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`
-- Anti-hallucination: `ask_safe` with validation strategies and confidence thresholds
-- Functional data ops (CSV/JSON): load/select/filter/take/export; JSON schema inference/validation
-- Multioutput system: generate/persist multiple files from a single operation
-- Sessions and memory: `session_start/ask/history`, summarization, compression, context-window
-- Telemetry (optional): minimal spans for scheduling and key ops via OpenTelemetry
+- LLM orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`, `ask_safe`
+- Anti‑hallucination: confidence scoring and domain validation (schema/PII gates)
+- RAG advanced:
+  - Precise per‑model tokenization (BPE): `rag.tokenize` / `rag.token_count` / `rag.chunk_tokens`
+  - Hybrid search (SQLite + Qdrant) with filters and pagination; auto ensure collection; retries/backoff/throttle; raw Qdrant filters; schema/index helpers
+  - Rerank (LLM) and cross‑encoder rerank with batching and env limits
+  - Fusion (semantic) with optional citations; `rag.optimize_window` (token‑budget); summarize chunks
+- Multioutput system: structured streaming + per‑file progress
+- Sessions & memory: start/ask/history, summarize/compress, context retrieve/merge, TTL/GC, durable store
+- Providers & routing v2: OpenAI/Anthropic/Gemini + Generic (HuggingFace/Ollama/Custom); budgets/canary/retries/backoff; health/capacity/failure‑rate routing
+- Agents & orchestration events: create/run/chain/parallel/cancel; supervisor; tool registry with scopes/quotas; `on_tool_call`/`on_tool_error`
+- Telemetry & metrics: rollups JSON, per‑call logs, Prometheus export, starter Grafana dashboard
 - Sandbox by default: safe execution and constrained file I/O
 
 ---
@@ -179,6 +186,7 @@ Configuration via `lexon.toml` controls defaults (provider/model, timeouts, etc.
 Included scenarios (offline-first with goldens):
 - Hello Lexon (`samples/00-hello-lexon.lx`)
 - Async parallel orchestration (`samples/01-async-parallel.lx`)
+- Research Analyst app (end-to-end, with MCP) (`samples/apps/research_analyst/main.lx`)
 - Release notes copilot (multioutput)
 - Data quality report (CSV → HTML/Markdown)
 - Eval harness (parallel + fallback)
@@ -190,6 +198,8 @@ Run them:
 ```bash
 cargo make samples-smoke
 cargo make samples-snapshot
+# Or run the Research Analyst app directly
+cargo run -q -p lexc-cli -- compile --run samples/apps/research_analyst/main.lx
 ```
 
 ---

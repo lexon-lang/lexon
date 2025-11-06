@@ -1,0 +1,21 @@
+📄 Vector Memory System initialized with SQLite backend
+🛠️ on_tool_call: read_file
+📁 read_file: Reading file 'samples/data-quality/sales.csv'
+🛠️ on_tool_call: read_file
+✅ read_file: Successfully read 97 bytes from 'samples/data-quality/sales.csv'
+✅ on_tool_success: read_file
+[DEBUG] [data_operation] COMPLETED in 381µs
+🎯 ask_multioutput: Generating response with 2 output files
+📝 Prompt: From this CSV data, produce: 1) an HTML data quality report, 2) a short markdown findings summary.
+📁 Output files: ["report.html", "findings.md"]
+[INFO] [ask_operation] EVENT: ask_multioutput: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-3.5-turbo"), user_prompt=Some("From this CSV data, produce: 1) an HTML data quality report, 2) a short markdown findings summary.")
+🔍 DEBUG: Checking cache for key: "model=gpt-3.5-turbo;temp=0.2;sys=You can emit files using a tool-call like JSON: {\"tool_calls\":[{\"name\":\"emit_file\",\"arguments\":{\"name\":string,\"mime\":string,\"b64\":string}}...]}. Do not include prose when emitting files.;user=From this CSV data, produce: 1) an HTML data quality report, 2) a short markdown findings summary.;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 2.228746292s
+✅ ask_multioutput: Generated response with 2 files
+[INFO] [ask_operation] COMPLETED in 2.25687325s
+💾 Saved file: samples/data-quality/out/report.html (38 bytes, text/html)
+💾 Saved file: samples/data-quality/out/findings.md (38 bytes, text/markdown)
+Data quality report generated.

@@ -1,0 +1,7 @@
+// Telemetry smoke: simple run that exercises LLM and metrics
+print("[telemetry] starting");
+let r = ask("Say 'OK'", "simulated");
+print(r);
+let m = metrics.get_json();
+print(m);
+print("[telemetry] done");

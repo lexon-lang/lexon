@@ -1,0 +1,12 @@
+// Dist cache stub smoke
+let _ = dist_cache__del("k");
+let a = dist_cache__exists("k");
+print(a);
+let _s = dist_cache__set("k", 1);
+let v1 = dist_cache__get("k");
+print(v1);
+let n = dist_cache__incr("k");
+print(n);
+let _d = dist_cache__del("k");
+let a2 = dist_cache__exists("k");
+print(a2);

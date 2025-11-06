@@ -1,0 +1,8 @@
+📄 Vector Memory System initialized with SQLite backend
+DEBUG EXECUTOR: Loaded 0 functions: []
+🔧 set_default_model: Setting default model to 'gpt-4o-mini'
+🔧 LlmAdapter: Setting default model to 'gpt-4o-mini'
+✅ set_default_model: Default model updated successfully
+["Hello"," Lex","on"," precise"," token","ization","."]
+7
+["Hello Lexon precise"," precise tokenization."]

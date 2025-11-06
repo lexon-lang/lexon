@@ -1,0 +1,4 @@
+// Prompt registry smoke
+let v = prompt__register("greet", "Hello {{name}}", 1);
+let out = prompt__render_kv("greet", "name", "Lexon");
+print(out);

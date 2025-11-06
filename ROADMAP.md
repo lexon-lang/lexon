@@ -1,124 +1,33 @@
-## RC Roadmap Snapshot
+## Roadmap Snapshot
 
-This roadmap reflects the v1.0.0-rc.1 scope and is the authoritative plan for this RC bundle.
+This roadmap reflects the v1.0.0-rc.1 scope and the current, implemented reality.
 
-### Implemented in this RC
-- Core: `typeof`, `Ok`, `Error`, `is_ok`, `is_error`, `unwrap`.
-- LLM orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`, `ask_safe`.
-- Providers (real): OpenAI (`gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`), Anthropic (`claude-*`), Google Gemini (`gemini-1.5-pro`, `gemini-1.5-flash`).
-- Anti‑hallucination helpers: `validate_response(basic)`.
-- Sessions/context: basic session state (`session_start`, `session_ask`, `session_history`).
-- RAG Lite: vector store with deterministic embeddings; basic `vector_search`.
-- Multioutput (Preview): `ask_multioutput`, helpers `get_multioutput_*`, `save_multioutput_file`, `load/save_binary_file`; real_binaries (opt‑in), auto‑mkdir, MIME inference, pseudo‑streaming.
-- Iterators/FP: `map`, `filter`, `reduce`, `range`, `enumerate`, etc.
-- Async runtime: async/await, timeouts, cancellation.
-- Data ops: CSV/JSON load/filter/select/take/export; `load_csv`, `save_csv`, `load_json`, `save_json`.
-- I/O (sandboxed): `read_file`, `write_file`, `save_file`, `load_file`, `execute`.
-- Config: `set_default_model`, `get_provider_default`, `lexon.toml`.
-- Tooling: CLI `compile`, `bench`, `lint`; VSIX; CI in bundle.
+### Implemented (GA scope in this bundle)
+- Core & Concurrency: `typeof`, `Ok`/`Error`, async orchestration (`task.spawn/await`, `join_all`/`join_any`), channels + `select_any`, `timeout`, `retry`, `rate_limiter`.
+- LLM Orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`, `ask_safe`, structured streaming (`STREAM_CHUNK`/`STREAM_EVENT`).
+- Sessions & Context: start/ask/history, summarize/compress, context retrieve/merge, durable store, TTL/GC + `sessions.gc_now`, list/delete.
+- RAG Advanced:
+  - Tokenization & Chunking: precise per‑model BPE for `rag.tokenize`/`rag.token_count`/`rag.chunk_tokens`; `memory_index.ingest_chunks`.
+  - Retrieval: hybrid search (SQLite + Qdrant) with alpha weighting, metadata filters, pagination (offset/limit_factor), auto ensure collection, retries/backoff/throttle, raw Qdrant filter passthrough, schema/index helpers.
+  - Post‑processing: `rag.rerank` (LLM), `rag.rerank_cross_encoder` (batched; env `LEXON_RERANK_BATCH_SIZE`/`LEXON_RERANK_MAX_ITEMS`), `rag.fuse_passages`, `rag.fuse_passages_semantic` (+citations), `rag.summarize_chunks`, `rag.optimize_window` (token‑budget), `memory_index.hybrid_search_page`/`hybrid_search_all`, `memory_index.hybrid_search_llm_rerank`.
+- Providers & Routing v2: OpenAI/Anthropic/Gemini + Generic (HuggingFace/Ollama/Custom), budgets/quotas, retries/backoff, health/capacity/failure‑rate, canary, decision metrics.
+- Agents & Orchestration: create/run/chain/parallel/cancel, deadlines/budgets, supervisor (state/list), tool registry with scopes/quotas, `on_tool_call`/`on_tool_error`, OTEL spans.
+- Anti‑hallucination & Quality: confidence scoring, validation (schema/PII) via `quality.*`, configurable gates.
+- MCP 1.1: stdio/WS, tools DSL (register/list/tool_info/set_quota), quotas/audit, cancellation/timeouts, sandbox/allowlist, env/lexon.toml config, spans/metrics.
+- Data Ops: CSV/JSON/Parquet load/save; fixtures; ETL minis.
+- Cache & Persistence: cache TTL/GC + invalidation, distributed cache stub, durable session/vector stores.
+- CLI & Linter: `lexc run`/`config`/`new`; strict linter (blocking I/O, missing await); samples + goldens.
+- Metrics & Observability: per‑call logs, rollups JSON, Prometheus export, starter Grafana dashboard (latency/cost/quality overlays), OTEL hooks.
+- Packaging & CI: release binaries, wheels, Homebrew, Dockerfiles; PR + nightly matrices; golden coverage.
 
-### Planned for GA (granular)
-- Anti‑hallucination: `ask_with_validation`, `confidence_score`, domain validators; enrich `validate_response` strategies.
-- Sessions: add `session_summarize`, `session_compress`, `context_merge/retrieve`.
-- RAG: real embeddings, `auto_rag_context` end‑to‑end, hybrid search.
-- CLI: `run`, `config`, `new`; improve `lint` rules (blocking I/O, missing await).
-- Telemetry: default OTEL templates, spans for data/memory/LLM; sampling.
-- Multioutput: incremental streaming API, non text‑like binaries, per‑file metadata, callbacks/progress, limits and validations.
-- Providers: routing policies (cost/latency), health checks.
+### Next refinements (post‑GA, high signal)
+- Qdrant convenience presets for typed payload indexes (keyword/number/date) and compact filter builders.
+- Telemetry dashboards: enrich model/provider breakdowns, error stratification, budget/quality overlays.
+- Provider expansion & rerank: optional adapters (Azure OpenAI/Bedrock) and external cross‑encoder endpoints.
+- DX & Samples: VS Code LSP enrichments, more end‑to‑end samples; optional REPL.
 
-### P1 (high value)
-- Parquet I/O: `load_parquet(path) -> dataset`, `save_parquet(dataset, path) -> bool`.
-
-### LLM‑first completeness plan 
-- Prompting & evaluation
-  - Prompt templates/versioning, prompt registry per project.
-  - Evals datasets, golden tests, coverage, automatic metrics (exact, BLEU/ROUGE, task metrics).
-- Tool calling & permissions
-  - Tool registry with scopes/permissions and policies (allowlist/denylist, quotas).
-  - MCP integration (1.1) with permission profiles and auditing.
-- Structured streaming
-  - Streaming API for LLM (tokens/chunks + metadata) and Multioutput (per‑file progress).
-- Stdlib & infra
-  - http/ws client, timers/sleep, path utils, basic zip/crypto.
-  - Secrets manager and sandbox/policy profiles.
-- Dev UX & packaging
-  - `lexc new` (project/modules/deps scaffold); `lexc run`; REPL and basic debugging.
-- Testing
-  - Native testing framework (assert/fixtures), snapshot tests, property/fuzz for the DSL.
-- Cost, quotas and reliability
-  - Per‑execution budgets, rate limiting, unified retry/backoff.
-- Routing/providers
-  - A/B & canary, health checks, policies by cost/latency/capacity, automatic model selection.
-- Persistence
-  - Durable stores for session/memory/cache with TTL/GC.
-- Observability
-  - Full coverage of tracing/metrics/logs, SLOs, ready‑made dashboards (OTEL).
-- Publishing & distribution
-  - Official binaries/containers, stable plugin/SDK.
-- Processes & docs
-  - Formal API Freeze, stability levels, migration guides.
-
-### Missing or experimental (post‑GA)
-- Validation: `ask_verified`, `configure_validation`, `hallucination_detect`.
-- Agents: `agent_create/run`, chains/parallel, supervisor/collab, state_machine, workflows.
-- Concurrency DSL: `spawn_task`, `join_all`, `select_first`, `timeout_after`, channels, rate limiter.
-- Providers: `configure_provider`, advanced routing, provider health monitoring.
-- Cache: invalidation and distributed cache.
-
-### Function gaps index (planned)
-- Anti‑hallucination (advanced):
-  - ask_verified(prompt, domain, options)
-  - ask_with_validation(prompt, config)
-  - confidence_score(response)
-  - hallucination_detect(response, context)
-  - configure_validation(config)
-- Sessions and context:
-  - session_summarize(session_id, options)
-  - session_compress(session_id, options)
-  - extract_key_points(session_id, options)
-  - context_window_manage(session_id, options)
-  - context_retrieve(session_id, query)
-  - context_merge([sessions], options)
-  - session_set_objectives(session_id, objectives)
-  - session_track_context(session_id, context)
-  - session_check_alignment(session_id, options)
-  - analyze_summary_quality(session_id, metrics)
-  - session_configure(session_id, config)
-- Global configuration:
-  - set_global_mode(mode)
-  - set_provider_default(provider, model)
-  - set_use_case_default(use_case, model)
-  - get_use_case_default(use_case)
-  - configure_lexon(config)
-- Iteration/FP:
-  - for_each(array, callback)
-- RAG / Vector:
-  - memory_index.hybrid_search(query, k)
-  - auto_rag_context()
-  - embedding_generation()
-  - semantic_similarity()
-- Cache:
-  - cache_invalidation()
-  - distributed_cache()
-- Agents (autonomous) and orchestration:
-  - agent_create/run, agent_chain/parallel, agent_state_machine
-  - agent_workflow/supervisor/collaboration/delegation
-- Concurrency advanced:
-  - spawn_task, join_all, select_first, timeout_after
-  - channels, select!, retry, rate_limiter
-- Providers system:
-  - configure_provider(), intelligent routing, provider health monitoring
-- CLI & Tooling:
-  - lexc repl, lexc config, lexc new, lexc run (subcomando dedicado)
-
-### MCP server support (target: 1.1)
-- Core loop: JSON‑RPC 2.0 over stdio (first) and WebSocket (optional).
-- Tool registry: expose Lexon functions as MCP tools with arity/type validation.
-- Concurrency & cancellation: map `CancellationToken/TaskHandle` to cancel requests; configurable timeouts.
-- Signals & lifecycle: SIGINT/SIGTERM → cancel/cleanup; orderly shutdown.
-- Security: I/O sandbox and `execute()` opt‑in; size/duration limits.
-- Configuration: `lexon.toml` + env; provider/model selection per tool.
-- Observability: spans per request/response, error/latency counters.
-- Packaging: `lexc mcp` subcommand with flags (`--stdio`, `--ws`, `--workspace`, `--allow-exec`).
+### Notes
+- CI runs with deterministic seeds and normalization; real providers are opt‑in for reproducibility.
+- See `golden/rag/*` for RAG coverage (tokenize, optimize_window, rerank, fusion, pagination, llm_rerank), and `samples/apps/research_analyst` for a comprehensive demo.
 
 

@@ -1,0 +1,21 @@
+📄 Vector Memory System initialized with SQLite backend
+🛠️ on_tool_call: read_file
+📁 read_file: Reading file 'samples/triage/tickets.csv'
+🛠️ on_tool_call: read_file
+✅ read_file: Successfully read 104 bytes from 'samples/triage/tickets.csv'
+✅ on_tool_success: read_file
+[DEBUG] [data_operation] COMPLETED in 337.792µs
+🎯 ask_multioutput: Generating response with 2 output files
+📝 Prompt: From these tickets, produce a triage.csv with priority and a playbook.md with steps.
+📁 Output files: ["triage.csv", "playbook.md"]
+[INFO] [ask_operation] EVENT: ask_multioutput: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-3.5-turbo"), user_prompt=Some("From these tickets, produce a triage.csv with priority and a playbook.md with steps.")
+🔍 DEBUG: Checking cache for key: "model=gpt-3.5-turbo;temp=0.2;sys=You can emit files using a tool-call like JSON: {\"tool_calls\":[{\"name\":\"emit_file\",\"arguments\":{\"name\":string,\"mime\":string,\"b64\":string}}...]}. Do not include prose when emitting files.;user=From these tickets, produce a triage.csv with priority and a playbook.md with steps.;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 2.087392959s
+✅ ask_multioutput: Generated response with 2 files
+[INFO] [ask_operation] COMPLETED in 2.114467917s
+💾 Saved file: samples/triage/out/triage.csv (62 bytes, text/csv)
+💾 Saved file: samples/triage/out/playbook.md (38 bytes, text/markdown)
+Triage generated.

@@ -1,0 +1,4 @@
+// Fixtures save/load smoke
+let ok = fixtures__save("x.txt", "hello");
+let v = fixtures__load("x.txt");
+print(v);

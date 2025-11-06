@@ -1,0 +1,4 @@
+// Quick smoke for PII redaction only
+let txt = "Contact me at alice@example.com or +34 666 777 888";
+let red = pii_redact(txt);
+print(red);

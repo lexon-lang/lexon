@@ -1,0 +1,16 @@
+📄 Vector Memory System initialized with SQLite backend
+🎯 ask_multioutput: Generating response with 3 output files
+📝 Prompt: Generate a tiny static site (index.html, styles.css, sitemap.xml) from these docs.
+📁 Output files: ["site/index.html", "site/styles.css", "site/sitemap.xml"]
+[INFO] [ask_operation] EVENT: ask_multioutput: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-3.5-turbo"), user_prompt=Some("Generate a tiny static site (index.html, styles.css, sitemap.xml) from these docs.")
+🔍 DEBUG: Checking cache for key: "model=gpt-3.5-turbo;temp=0.2;sys=You can emit files using a tool-call like JSON: {\"tool_calls\":[{\"name\":\"emit_file\",\"arguments\":{\"name\":string,\"mime\":string,\"b64\":string}}...]}. Do not include prose when emitting files.;user=Generate a tiny static site (index.html, styles.css, sitemap.xml) from these docs.;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 3.024372375s
+✅ ask_multioutput: Generated response with 3 files
+[INFO] [ask_operation] COMPLETED in 3.052667167s
+💾 Saved file: samples/static-site/out/site/index.html (42 bytes, text/html)
+💾 Saved file: samples/static-site/out/site/styles.css (42 bytes, text/css)
+💾 Saved file: samples/static-site/out/site/sitemap.xml (43 bytes, application/xml)
+Static site generated.

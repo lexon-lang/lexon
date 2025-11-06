@@ -1,0 +1,15 @@
+// ask_with_validation demo (simulated by default)
+let model = get_env_or("LEXON_MODEL", "simulated");
+set_default_model(model);
+
+let _ = configure_validation({
+  "min_confidence": 0.7,
+  "validation_types": ["basic","factual"],
+  "domain": "finance"
+});
+
+let p = "Write a short summary of our pricing model without claiming guaranteed returns.";
+let res = ask_with_validation(p, {"min_confidence": 0.7, "max_attempts": 1});
+print(res);
+
+

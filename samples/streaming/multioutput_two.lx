@@ -1,0 +1,7 @@
+// Multioutput streaming with two files
+print("[stream] multioutput_two start");
+let mo = ask_multioutput_stream("Generate two short notes", ["a.txt", "b.txt"]);
+save_binary_file_stream(mo, "samples/streaming/out2.txt");
+print("[stream] multioutput_two end");
+
+

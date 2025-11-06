@@ -1,0 +1,107 @@
+name: PR Gate (RC.1)
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-goldens:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable]
+    runs-on: ${{ matrix.os }}
+    env:
+      LEXON_SEED: "0"
+    defaults:
+      run:
+        working-directory: v1.0.0-rc.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            v1.0.0-rc.1
+
+      - name: Build core
+        run: |
+          cargo build -q -p lexc
+          cargo build -q -p lexc-cli
+
+      - name: Run smokes (quick)
+        run: |
+          set -euo pipefail
+          cargo run -q -p lexc-cli -- compile --run samples/routing/metrics.lx
+          cargo run -q -p lexc-cli -- compile --run samples/agents/supervisor.lx
+          cargo run -q -p lexc-cli -- compile --run samples/streaming/multioutput.lx
+
+      - name: Golden comparisons (subset)
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A MAP
+          MAP[golden/routing/metrics.txt]=samples/routing/metrics.lx
+          MAP[golden/prompts/register_render.txt]=samples/prompts/register_render.lx
+          MAP[golden/eval/bleu_rouge.txt]=samples/eval/bleu_rouge.lx
+          MAP[golden/fixtures/json_roundtrip.txt]=samples/fixtures/json_roundtrip.lx
+          MAP[golden/rag/opt_window.txt]=samples/rag/opt_window.lx
+          MAP[golden/rag/tokenize_smoke.txt]=samples/rag/tokenize_smoke.lx
+
+          normalize() {
+            sed -E \
+              -e 's/\x1B\[[0-9;]*[mK]//g' \
+              -e 's/^\[DEBUG\].*$//g' \
+              -e 's/^\[INFO\].*$//g' \
+              -e 's/"last_checked_epoch":[0-9]+/"last_checked_epoch":<EPOCH>/g' \
+              -e 's/"next_probe_epoch":[0-9]+/"next_probe_epoch":<EPOCH>/g' \
+              -e 's/"failure_count":[0-9]+/"failure_count":<NUM>/g' \
+              -e 's/,"last_decision":\{.*\}//g' \
+              -e '/^\[ROUTING\]/d' \
+              -e 's/^💰 Estimated cost.*$//g' \
+              -e 's/^📊 Token usage.*$//g' \
+              -e 's/^\s+- .*tokens:.*$//g'
+          }
+
+          failures=0; total=0
+          for snap in "${!MAP[@]}"; do
+            sample=${MAP[$snap]}
+            out=$(mktemp); total=$((total+1))
+            if ! cargo run -q -p lexc-cli -- compile --run "$sample" | normalize > "$out"; then
+              echo "[RUN FAIL] $sample" >&2; failures=$((failures+1)); continue
+            fi
+            if ! normalize < "$snap" | diff -u - "$out" > /tmp/diff.txt; then
+              echo "[DIFF FAIL] $sample vs $snap" >&2; cat /tmp/diff.txt >&2; failures=$((failures+1))
+            else
+              echo "[OK] $sample"
+            fi
+          done
+          echo "PR golden coverage: $((total-failures))/$total"
+          test "$failures" -eq 0
+
+      - name: Metrics thresholds
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Generate metrics summary
+          cargo run -q -p lexc-cli -- compile --run samples/metrics/write_json.lx
+          python3 - << 'PY'
+import json,sys
+with open('samples/metrics/summary.json') as f:
+    js=json.load(f)
+calls = int(js.get('total_llm_calls', 0))
+lat_ms = int(js.get('llm_total_ms', 0))
+cost = float(js.get('total_cost_usd', 0.0)) if 'total_cost_usd' in js else 0.0
+thr_calls=50; thr_lat=60000; thr_cost=5.0
+ok = (calls<=thr_calls) and (lat_ms<=thr_lat) and (cost<=thr_cost)
+print(f"metrics: calls={calls} lat_ms={lat_ms} cost={cost} (thresholds: {thr_calls},{thr_lat},{thr_cost})")
+sys.exit(0 if ok else 2)
+PY
+
+

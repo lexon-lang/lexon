@@ -1,0 +1,28 @@
+📄 Vector Memory System initialized with SQLite backend
+DEBUG EXECUTOR: Loaded 0 functions: []
+🔧 set_default_model: Setting default model to 'simulated'
+🔧 LlmAdapter: Setting default model to 'simulated'
+✅ set_default_model: Default model updated successfully
+🧠 memory_index.ingest: Ingesting 2 paths into vector memory index
+📄 Ingested: README.md (doc_id: 1, embedding_dim: 128)
+📄 Ingested: ROADMAP.md (doc_id: 2, embedding_dim: 128)
+✅ memory_index.ingest: Successfully ingested 2 documents
+ingested=
+2
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Given query: \"Lexon\"\nRate relevance of passage 0..1 (decimal).\nPassage: \"![Lexon](assets/lexon-wordmark.svg)\\n\\n## Lexon v1.0.0-rc.1\\n\\nA self-contained RC of the Lexon language and tooling: language/runtime, CLI, samples, Tree-sitter grammar, VS Code extension, and Python binding.\\n\\n### Why Lexon (quick)\\n- Orchestrate LLM + data as first-class language features (async/await, parallel/merge/fallback/ensemble).\\n- Built-in reliability: validation (`ask_safe`) with confidence scoring; sessions/RAG Lite.\\n- Deterministic artifacts: multioutput (text + multiple files/binaries) \"\nAnswer as: score: <number>")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise scorer that outputs only: score: <number between 0 and 1>;user=Given query: \"Lexon\"\nRate relevance of passage 0..1 (decimal).\nPassage: \"![Lexon](assets/lexon-wordmark.svg)\\n\\n## Lexon v1.0.0-rc.1\\n\\nA self-contained RC of the Lexon language and tooling: language/runtime, CLI, samples, Tree-sitter grammar, VS Code extension, and Python binding.\\n\\n### Why Lexon (quick)\\n- Orchestrate LLM + data as first-class language features (async/await, parallel/merge/fallback/ensemble).\\n- Built-in reliability: validation (`ask_safe`) with confidence scoring; sessions/RAG Lite.\\n- Deterministic artifacts: multioutput (text + multiple files/binaries) \"\nAnswer as: score: <number>;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 172
+   - Completion tokens: 216
+   - Total tokens: 388
+💰 Estimated cost (simulated): $0.011640
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Given query: \"Lexon\"\nRate relevance of passage 0..1 (decimal).\nPassage: \"## Roadmap Snapshot\\n\\nThis roadmap reflects the v1.0.0-rc.1 scope and is the authoritative plan for this bundle.\\n\\n### Implemented in v1.0.0-rc.1 (current)\\n- Core: `typeof`, `Ok`, `Error`, `is_ok`, `is_error`, `unwrap`.\\n- LLM orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`, `ask_safe`.\\n- Providers (real): OpenAI, Anthropic, Google Gemini; plus Generic Providers via `configure_provider` (HuggingFace, Ollama, Custom).\\n- Anti‑hallucination: `ask_safe` with confi\"\nAnswer as: score: <number>")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise scorer that outputs only: score: <number between 0 and 1>;user=Given query: \"Lexon\"\nRate relevance of passage 0..1 (decimal).\nPassage: \"## Roadmap Snapshot\\n\\nThis roadmap reflects the v1.0.0-rc.1 scope and is the authoritative plan for this bundle.\\n\\n### Implemented in v1.0.0-rc.1 (current)\\n- Core: `typeof`, `Ok`, `Error`, `is_ok`, `is_error`, `unwrap`.\\n- LLM orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`, `ask_safe`.\\n- Providers (real): OpenAI, Anthropic, Google Gemini; plus Generic Providers via `configure_provider` (HuggingFace, Ollama, Custom).\\n- Anti‑hallucination: `ask_safe` with confi\"\nAnswer as: score: <number>;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 172
+   - Completion tokens: 217
+   - Total tokens: 389
+💰 Estimated cost (simulated): $0.011670
+[{"content":"![Lexon](assets/lexon-wordmark.svg)\n\n## Lexon v1.0.0-rc.1\n\nA self-contained RC of the Lexon language and tooling: language/runtime, CLI, samples, Tree-sitter grammar, VS Code extension, and Python binding.\n\n### Why Lexon (quick)\n- Orchestrate LLM + data as first-class language features (async/await, parallel/merge/fallback/ensemble).\n- Built-in reliability: validation (`ask_safe`) with confidence scoring; sessions/RAG Lite.\n- Deterministic artifacts: multioutput (text + multiple files/binaries) ","path":"README.md","hybrid_score":0.37798595428466797,"vector_score":0.11140851676464081,"text_score":1.0,"doc_id":1},{"content":"## Roadmap Snapshot\n\nThis roadmap reflects the v1.0.0-rc.1 scope and is the authoritative plan for this bundle.\n\n### Implemented in v1.0.0-rc.1 (current)\n- Core: `typeof`, `Ok`, `Error`, `is_ok`, `is_error`, `unwrap`.\n- LLM orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`, `ask_safe`.\n- Providers (real): OpenAI, Anthropic, Google Gemini; plus Generic Providers via `configure_provider` (HuggingFace, Ollama, Custom).\n- Anti‑hallucination: `ask_safe` with confi","path":"ROADMAP.md","hybrid_score":0.36606574058532715,"vector_score":0.09437960386276245,"text_score":1.0,"doc_id":2}]

@@ -1,0 +1,22 @@
+class Lexc < Formula
+  desc "Lexon CLI"
+  homepage "https://github.com/your-org/lexon"
+  version "1.0.0-rc.1"
+
+  on_macos do
+    url "https://github.com/your-org/lexon/releases/download/v1.0.0-rc.1/lexon-macos-latest-binaries"
+    sha256 "<FILL_SHA256_MACOS>"
+  end
+
+  on_linux do
+    url "https://github.com/your-org/lexon/releases/download/v1.0.0-rc.1/lexon-ubuntu-latest-binaries"
+    sha256 "<FILL_SHA256_LINUX>"
+  end
+
+  def install
+    bin.install "lexc"
+    bin.install "lexc-cli"
+  end
+end
+
+

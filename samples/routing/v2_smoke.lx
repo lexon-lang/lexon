@@ -1,0 +1,5 @@
+// Routing v2 selection + metrics
+let r = ask("Say 'OK'", "gpt-4");
+print(r);
+let m = routing.get_metrics_json();
+print(m);

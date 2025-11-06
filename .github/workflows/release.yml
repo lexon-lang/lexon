@@ -1,0 +1,106 @@
+name: Release (RC.1)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: v1.0.0-rc.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            v1.0.0-rc.1
+
+      - name: Build binaries
+        run: |
+          cargo build --release -p lexc
+          cargo build --release -p lexc-cli
+          mkdir -p dist
+          cp target/release/lexc dist/
+          cp target/release/lexc-cli dist/
+          tar -czf dist/lexon-${{ matrix.os }}.tar.gz -C dist lexc lexc-cli
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lexon-${{ matrix.os }}-binaries
+          path: v1.0.0-rc.1/dist/lexon-${{ matrix.os }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts (Ubuntu)
+        uses: actions/download-artifact@v4
+        with:
+          name: lexon-ubuntu-latest-binaries
+          path: dist
+      - name: Download artifacts (macOS)
+        uses: actions/download-artifact@v4
+        with:
+          name: lexon-macos-latest-binaries
+          path: dist
+      - name: Compute SHA256
+        id: shas
+        run: |
+          set -euo pipefail
+          echo "sha_ubuntu=$(sha256sum dist/lexon-ubuntu-latest.tar.gz | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha_macos=$(sha256sum dist/lexon-macos-latest.tar.gz | awk '{print $1}')" >> $GITHUB_OUTPUT
+      - name: Generate Homebrew formula
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          REPO="${GITHUB_REPOSITORY}"
+          UB_URL="https://github.com/${REPO}/releases/download/${TAG}/lexon-ubuntu-latest.tar.gz"
+          MAC_URL="https://github.com/${REPO}/releases/download/${TAG}/lexon-macos-latest.tar.gz"
+          cat > dist/lexc.rb <<HBR
+class Lexc < Formula
+  desc "Lexon CLI"
+  homepage "https://github.com/${REPO}"
+  version "${TAG}"
+
+  on_macos do
+    url "${MAC_URL}"
+    sha256 "${{ steps.shas.outputs.sha_macos }}"
+  end
+
+  on_linux do
+    url "${UB_URL}"
+    sha256 "${{ steps.shas.outputs.sha_ubuntu }}"
+  end
+
+  def install
+    bin.install "lexc"
+    bin.install "lexc-cli"
+  end
+end
+HBR
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            dist/lexon-ubuntu-latest.tar.gz
+            dist/lexon-macos-latest.tar.gz
+            dist/lexc.rb
+
+

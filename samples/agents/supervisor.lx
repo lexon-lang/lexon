@@ -1,0 +1,7 @@
+// Agents supervisor API smoke
+set_default_model("simulated");
+let a = agent_create("demo", {"model": "simulated", "budget_usd": 0.1, "deadline_ms": 500});
+let s1 = agent_supervisor.get_state(a);
+print(s1);
+let list = agent_supervisor.list();
+print(list);

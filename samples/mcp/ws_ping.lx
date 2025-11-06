@@ -1,0 +1,9 @@
+// MCP WebSocket ping sample
+let url = "ws://127.0.0.1:8099";
+let ok = mcp.run_ws(url);
+print("mcp ws ok: " + ok);
+
+
+
+
+

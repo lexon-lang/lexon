@@ -1,0 +1,9 @@
+// Golden-like sample for rag.optimize_window using fixtures
+
+set_default_model("gpt-4o-mini");
+
+let arr = load_json("samples/rag/fixtures/opt_window_results.json");
+let sel = rag__optimize_window(arr, 40, "gpt-4o-mini", 8);
+print(sel);
+
+

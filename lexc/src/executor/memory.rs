@@ -6,6 +6,9 @@ use super::{ExecutorError, Result, RuntimeValue};
 use crate::lexir::LexLiteral;
 use crate::runtime::{memory as rt_memory, RuntimeConfig, RuntimeValue as RtValue};
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+use serde_json::Value as JsonValue;
 
 pub struct MemoryManager {
     inner: rt_memory::MemoryManager,
@@ -13,10 +16,17 @@ pub struct MemoryManager {
 
 impl MemoryManager {
     pub fn new() -> Self {
-        let cfg = RuntimeConfig::default();
+        let mut cfg = RuntimeConfig::default();
+        if let Ok(path) = std::env::var("LEXON_MEMORY_PATH") { if !path.trim().is_empty() { cfg.memory_path = Some(path); } }
         Self {
             inner: rt_memory::MemoryManager::new(&cfg),
         }
+    }
+
+    pub fn clean_expired(&mut self) -> Result<()> {
+        self.inner
+            .clean_expired()
+            .map_err(|e| ExecutorError::MemoryError(format!("{}", e)))
     }
 
     fn to_rt(v: RuntimeValue) -> RtValue {
@@ -149,11 +159,15 @@ impl MemoryManager {
             .inner
             .get_or_create_scope("sessions", Some(rt_memory::MemoryStrategy::Buffer), None)
             .map_err(|e| ExecutorError::MemoryError(format!("{}", e)))?;
-        self.store_memory(
+        let ttl_ms_opt = std::env::var("LEXON_SESSION_TTL_MS").ok().and_then(|v| v.parse::<u64>().ok());
+        self.inner
+            .store(
             "sessions",
-            RuntimeValue::String(new_history.to_string()),
-            Some(&key),
-        )
+                Self::to_rt(RuntimeValue::String(new_history.to_string())),
+                Some(&key),
+                ttl_ms_opt,
+            )
+            .map_err(|e| ExecutorError::MemoryError(format!("{}", e)))
     }
 
     pub fn add_to_session_history(&mut self, session_id: &str, message: &str) -> Result<()> {
@@ -171,7 +185,8 @@ impl MemoryManager {
     }
 
     pub fn create_session(&mut self, session_id: &str) -> Result<()> {
-        self.update_session_history(session_id, "")
+        self.update_session_history(session_id, "")?;
+        self.append_session_index(session_id)
     }
 
     pub fn session_exists(&self, session_id: &str) -> bool {
@@ -180,6 +195,52 @@ impl MemoryManager {
             .ok()
             .flatten()
             .is_some()
+    }
+
+    fn memory_dir() -> PathBuf {
+        if let Ok(path) = std::env::var("LEXON_MEMORY_PATH") {
+            if !path.trim().is_empty() { return PathBuf::from(path); }
+        }
+        PathBuf::from(".lexon")
+    }
+
+    fn sessions_index_path() -> PathBuf {
+        let mut p = Self::memory_dir();
+        p.push("sessions_index.json");
+        p
+    }
+
+    fn read_sessions_index() -> Vec<String> {
+        let p = Self::sessions_index_path();
+        match fs::read_to_string(&p) {
+            Ok(txt) => serde_json::from_str::<JsonValue>(&txt).ok().and_then(|v| v.as_array().cloned())
+                .map(|arr| arr.into_iter().filter_map(|e| e.as_str().map(|s| s.to_string())).collect()).unwrap_or_default(),
+            Err(_) => Vec::new(),
+        }
+    }
+
+    fn write_sessions_index(list: &[String]) -> Result<()> {
+        let p = Self::sessions_index_path();
+        if let Some(parent) = p.parent() { let _ = fs::create_dir_all(parent); }
+        let json = JsonValue::Array(list.iter().map(|s| JsonValue::String(s.clone())).collect());
+        fs::write(p, serde_json::to_string_pretty(&json).unwrap_or_else(|_| json.to_string()))
+            .map_err(|e| ExecutorError::MemoryError(format!("{}", e)))
+    }
+
+    pub fn append_session_index(&mut self, session_id: &str) -> Result<()> {
+        let mut list = Self::read_sessions_index();
+        if !list.iter().any(|s| s == session_id) { list.push(session_id.to_string()); }
+        Self::write_sessions_index(&list)
+    }
+
+    pub fn remove_session_index(&mut self, session_id: &str) -> Result<()> {
+        let mut list = Self::read_sessions_index();
+        list.retain(|s| s != session_id);
+        Self::write_sessions_index(&list)
+    }
+
+    pub fn list_sessions(&self) -> Vec<String> {
+        Self::read_sessions_index()
     }
 }
 

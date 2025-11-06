@@ -1,0 +1,71 @@
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Starting parse_ask_safe_expression
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Node structure: "(ask_safe_expression (ask_safe_kv_pair value: (string_literal)) (ask_safe_kv_pair value: (string_literal)) (ask_safe_kv_pair value: (float_literal)))"
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Processing child node: kind=ask_safe_kv_pair, text=Some("user: \"Produce a short, factual executive summary for the selected tickets\";")
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Found ask_safe_kv_pair node
+🛡️ DEBUG ASK_SAFE_PROCESSOR: ask_safe_kv_pair key=user, value_kind=string_literal
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Processing child node: kind=ask_safe_kv_pair, text=Some("validation: \"basic\";")
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Found ask_safe_kv_pair node
+🛡️ DEBUG ASK_SAFE_PROCESSOR: ask_safe_kv_pair key=validation, value_kind=string_literal
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Processing child node: kind=ask_safe_kv_pair, text=Some("confidence_threshold: 0.8;")
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Found ask_safe_kv_pair node
+🛡️ DEBUG ASK_SAFE_PROCESSOR: ask_safe_kv_pair key=confidence_threshold, value_kind=float_literal
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Final validation_strategy: Some("basic")
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Final confidence_threshold: Some(0.8)
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Final cross_reference_models: []
+🛡️ DEBUG ASK_SAFE_PROCESSOR: Final attributes: []
+🛡️ DEBUG HIR->LEXIR: ask_safe attributes before extraction: {}
+🛡️ DEBUG HIR->LEXIR: validation_strategy: Some("basic"), confidence_threshold: Some(0.8), max_attempts: None
+🛡️ DEBUG HIR->LEXIR: cross_reference_models: []
+📄 Vector Memory System initialized with SQLite backend
+🔧 set_default_model: Setting default model to 'gpt-4'
+🔧 LlmAdapter: Setting default model to 'gpt-4'
+✅ set_default_model: Default model updated successfully
+📊 load_csv: Loading CSV file 'samples/data/triage/tickets.csv'
+[DEBUG] [data_operation] EVENT: Reading CSV
+📊 Loading data from: samples/data/triage/tickets.csv
+   Loaded 6 rows with 4 columns
+✅ load_csv: CSV loaded successfully
+[DEBUG] [data_operation] COMPLETED in 15.269042ms
+🔍 Filtering dataset with condition: priority == high
+   Filter applied. Execution deferred (lazy evaluation)
+🔍 Taking 5 rows from dataset
+   Limit applied. Execution deferred (lazy evaluation)
+[INFO] [ask_operation] EVENT: ask_merge: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-4"), user_prompt=Some("Consolidate these responses using synthesize strategy:\n\nSummarize top high‑priority tickets in two bullet points.\n---\nList owners and a short action for each ticket.\n---\nIdentify one risk and one quick win.\n---\nIdentifier(\"\")\n\nConsolidated result:")
+🔍 DEBUG: Checking cache for key: "model=gpt-4;temp=0.3;sys=You are an expert at consolidating information.;user=Consolidate these responses using synthesize strategy:\n\nSummarize top high‑priority tickets in two bullet points.\n---\nList owners and a short action for each ticket.\n---\nIdentify one risk and one quick win.\n---\nIdentifier(\"\")\n\nConsolidated result:;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 5.8412965s
+[INFO] [ask_operation] COMPLETED in 5.868363625s
+🛡️ DEBUG: Executing AskSafe instruction with validation
+🛡️ Starting ANTI-HALLUCINATION validation for prompt: Produce a short, factual executive summary for the selected tickets
+🔄 Validation attempt 1/3
+🔍 DEBUG call_llm: model=None, user_prompt=Some("Produce a short, factual executive summary for the selected tickets")
+⚠️  No default model configured, using fallback
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Produce a short, factual executive summary for the selected tickets;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 18
+   - Completion tokens: 60
+   - Total tokens: 78
+💰 Estimated cost (simulated): $0.002340
+🔍 Running BASIC validation...
+✅ Validation PASSED with confidence: 1.00
+🛡️ AskSafe completed: valid=true, confidence=1.00
+💾 save_json: Saving data to 'output/etl_top_high.json'
+[DEBUG] [data_operation] EVENT: Saving JSON
+✅ save_json: Data saved successfully
+[DEBUG] [data_operation] COMPLETED in 3.43925ms
+🎯 ask_multioutput: Generating response with 1 output files
+📝 Prompt: Create a brief markdown report for the filtered tickets
+📁 Output files: ["etl_report.md"]
+[INFO] [ask_operation] EVENT: ask_multioutput: calling LLM
+🔍 DEBUG call_llm: model=Some("gpt-4"), user_prompt=Some("Create a brief markdown report for the filtered tickets")
+🔍 DEBUG: Checking cache for key: "model=gpt-4;temp=0.2;sys=You can emit files using a tool-call like JSON: {\"tool_calls\":[{\"name\":\"emit_file\",\"arguments\":{\"name\":string,\"mime\":string,\"b64\":string}}...]}. Do not include prose when emitting files.;user=Create a brief markdown report for the filtered tickets;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 14.205147042s
+✅ ask_multioutput: Generated response with 1 files
+[INFO] [ask_operation] COMPLETED in 14.229152042s
+💾 Saved file (streamed): output/etl_report.md (40 bytes, text/markdown)
+ETL mini‑medallion completed

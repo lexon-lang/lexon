@@ -1,0 +1,22 @@
+// RAG eval sample: ingest, hybrid search, compute P/R/F1 against keywords
+let ing = memory_index.ingest(["README.md","ROADMAP.md"]);
+print("ingested=");
+print(ing);
+
+let alpha = get_env_or("LEXON_RAG_ALPHA", "0.7");
+let hits = memory_index.hybrid_search("lexon", 3, alpha);
+print(hits);
+
+// Gold keywords for a minimal smoke (can be tuned per repo)
+let gold = ["lexon","language","rag","agent"];
+let p = rag_eval.precision_at_k(hits, gold);
+let r = rag_eval.recall_at_k(hits, gold);
+let f1 = rag_eval.f1_at_k(hits, gold);
+print("P=");
+print(p);
+print("R=");
+print(r);
+print("F1=");
+print(f1);
+
+

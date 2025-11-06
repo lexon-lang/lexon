@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lexon-cli-rc1"
+version = "1.0.0rc1"
+description = "Lexon CLI wrapper (bundles lexc and lexc-cli binaries)"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [{name = "Lexon"}]
+requires-python = ">=3.8"
+
+[project.scripts]
+lexc = "lexon_cli.runner:run_lexc"
+lexc-cli = "lexon_cli.runner:run_lexc_cli"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+lexon_cli = ["bin/*"]
+
+

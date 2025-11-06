@@ -1,0 +1,11 @@
+# Minimal runtime image with lexc and lexc-cli
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
+# Expect caller to provide binaries via build context or COPY --from
+COPY dist/lexc /usr/local/bin/lexc
+COPY dist/lexc-cli /usr/local/bin/lexc-cli
+ENTRYPOINT ["/usr/local/bin/lexc-cli"]
+CMD ["--help"]
+
+

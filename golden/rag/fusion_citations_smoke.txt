@@ -1,0 +1,17 @@
+📄 Vector Memory System initialized with SQLite backend
+DEBUG EXECUTOR: Loaded 0 functions: []
+🔧 set_default_model: Setting default model to 'simulated'
+🔧 LlmAdapter: Setting default model to 'simulated'
+✅ set_default_model: Default model updated successfully
+📥 load_json: Loading JSON file 'samples/rag/fixtures/fusion.json'
+[DEBUG] [data_operation] EVENT: Reading JSON
+✅ load_json: JSON loaded successfully
+[DEBUG] [data_operation] COMPLETED in 419.167µs
+[1] This sentence is unrelated: cooking recipes and ingredients.
+
+[2] The system supports hybrid search and sessions.
+
+Citations:
+[1] 
+[2] 
+

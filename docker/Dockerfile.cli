@@ -1,0 +1,16 @@
+# Multi-stage image to build and run lexc-cli
+FROM rust:1.82-slim AS build
+WORKDIR /app
+COPY . .
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN cargo build --release -p lexc-cli -p lexc
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
+COPY --from=build /app/target/release/lexc /usr/local/bin/lexc
+COPY --from=build /app/target/release/lexc-cli /usr/local/bin/lexc-cli
+ENTRYPOINT ["/usr/local/bin/lexc-cli"]
+CMD ["--help"]
+
+

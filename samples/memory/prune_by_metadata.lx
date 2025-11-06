@@ -1,0 +1,7 @@
+// Prune by metadata smoke
+memory_index.ingest(["samples/00-hello-lexon.lx"]);
+memory_index__set_metadata("samples/00-hello-lexon.lx", "{\"tag\":\"tmp\"}");
+let del = memory_index.prune_by_metadata("{\"tag\":\"tmp\"}");
+print(del);
+
+

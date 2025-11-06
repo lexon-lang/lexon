@@ -1,0 +1,8 @@
+[
+  {"content": "Lexon provides a DSL for LLM orchestration.", "hybrid_score": 0.92},
+  {"content": "Hybrid search blends vector and keyword signals.", "hybrid_score": 0.88},
+  {"content": "Agent orchestration supports budgets and deadlines.", "hybrid_score": 0.76},
+  {"content": "Irrelevant: cooking recipes and ingredients.", "hybrid_score": 0.20},
+  {"content": "Sessions persist context with TTL and GC.", "hybrid_score": 0.70}
+]
+

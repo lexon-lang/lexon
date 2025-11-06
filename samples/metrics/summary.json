@@ -1,0 +1,7 @@
+{
+  "total_llm_calls": 0,
+  "llm_total_ms": 0,
+  "total_cost_usd": 0.0,
+  "by_model": {},
+  "call_logs": []
+}

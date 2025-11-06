@@ -1,0 +1,6 @@
+// Metrics write JSON smoke
+ask("OK", "simulated");
+metrics__write_call_logs("samples/metrics/call_logs.json");
+write_metrics_json("samples/metrics/summary.json");
+metrics__export_prometheus("samples/metrics/prometheus.txt");
+print("ok");

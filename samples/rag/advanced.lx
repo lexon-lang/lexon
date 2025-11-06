@@ -1,0 +1,33 @@
+// Advanced RAG demo: tokenization, chunking, ingest_chunks, rerank, fuse, summarize
+
+let model = get_env_or("LEXON_MODEL", "simulated");
+set_default_model(model);
+
+// 1) Tokenization utilities
+let toks = rag__tokenize("Hello Lexon world", model);
+print(toks);
+let tcount = rag__token_count("Hello Lexon world", model);
+print("Token count");
+print(tcount);
+
+// 2) Chunk tokens from README and ingest in chunks (tokens, overlap)
+let _ing = memory_index__ingest_chunks([
+  "README.md",
+], "{\"by\":\"tokens\",\"size\":200,\"overlap\":40}");
+
+// 3) Hybrid search + rerank
+let hits = memory_index.hybrid_search("Lexon", 3, "0.7");
+let reranked = rag__rerank(hits, "Lexon value proposition");
+print(reranked);
+
+// 4) Fuse top passages and summarize
+let fused = rag__fuse_passages(reranked, 3);
+print(fused);
+// 4.1) Optimize context window to a target token budget (keep 200 margin for answer)
+let selected = rag__optimize_window(fused, 400, model, 200);
+print(selected);
+let chunks = rag__chunk_tokens(fused, 120, 30, model);
+let summary = rag__summarize_chunks(chunks, model);
+print(summary);
+
+

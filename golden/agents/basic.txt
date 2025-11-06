@@ -1,0 +1,70 @@
+📄 Vector Memory System initialized with SQLite backend
+🔧 set_default_model: Setting default model to 'simulated'
+🔧 LlmAdapter: Setting default model to 'simulated'
+✅ set_default_model: Default model updated successfully
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Summarize Lexon's value prop in one sentence.")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Summarize Lexon's value prop in one sentence.;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 13
+   - Completion tokens: 54
+   - Total tokens: 67
+💰 Estimated cost (simulated): $0.002010
+🤖 SIMULATED RESPONSE (SIMULATED)
+Model: simulated
+Mode: Development/Testing
+
+USER: Summarize Lexon's value prop in one sentence.
+
+RESPONSE: This is a simulated LLM response for development and testing purposes.
+
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("List 3 key features of Lexon.")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=List 3 key features of Lexon.;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 9
+   - Completion tokens: 50
+   - Total tokens: 59
+💰 Estimated cost (simulated): $0.001770
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Explain Multioutput in one line.")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Explain Multioutput in one line.;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 10
+   - Completion tokens: 51
+   - Total tokens: 61
+💰 Estimated cost (simulated): $0.001830
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("What is RAG used for here?")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=What is RAG used for here?;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 8
+   - Completion tokens: 49
+   - Total tokens: 57
+💰 Estimated cost (simulated): $0.001710
+["🤖 SIMULATED RESPONSE (SIMULATED)\nModel: simulated\nMode: Development/Testing\n\nUSER: List 3 key features of Lexon.\n\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n","🤖 SIMULATED RESPONSE (SIMULATED)\nModel: simulated\nMode: Development/Testing\n\nUSER: Explain Multioutput in one line.\n\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n","🤖 SIMULATED RESPONSE (SIMULATED)\nModel: simulated\nMode: Development/Testing\n\nUSER: What is RAG used for here?\n\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n"]
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Give me a tagline for the README")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Give me a tagline for the README;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 10
+   - Completion tokens: 51
+   - Total tokens: 61
+💰 Estimated cost (simulated): $0.001830
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Propose a section title for documentation")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Propose a section title for documentation;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 12
+   - Completion tokens: 53
+   - Total tokens: 65
+💰 Estimated cost (simulated): $0.001950
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Suggest a short tweet for launch")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Suggest a short tweet for launch;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 10
+   - Completion tokens: 51
+   - Total tokens: 61
+💰 Estimated cost (simulated): $0.001830
+["🤖 SIMULATED RESPONSE (SIMULATED)\nModel: simulated\nMode: Development/Testing\n\nUSER: Give me a tagline for the README\n\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n","🤖 SIMULATED RESPONSE (SIMULATED)\nModel: simulated\nMode: Development/Testing\n\nUSER: Suggest a short tweet for launch\n\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n","🤖 SIMULATED RESPONSE (SIMULATED)\nModel: simulated\nMode: Development/Testing\n\nUSER: Propose a section title for documentation\n\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n"]

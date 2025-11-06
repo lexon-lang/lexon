@@ -1,0 +1,22 @@
+📄 Vector Memory System initialized with SQLite backend
+🔧 set_default_model: Setting default model to 'simulated'
+🔧 LlmAdapter: Setting default model to 'simulated'
+✅ set_default_model: Default model updated successfully
+🛡️ ask_with_validation: min_conf=0.75, types=["basic"], domain=None, models=simulated, attempts=2
+🔄 attempt 1 with model simulated
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Write a short summary of our pricing model without claiming guaranteed returns.")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Write a short summary of our pricing model without claiming guaranteed returns.;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 21
+   - Completion tokens: 63
+   - Total tokens: 84
+💰 Estimated cost (simulated): $0.002520
+Ok(🤖 SIMULATED RESPONSE (SIMULATED)
+Model: simulated
+Mode: Development/Testing
+
+USER: Write a short summary of our pricing model without claiming guaranteed returns.
+
+RESPONSE: This is a simulated LLM response for development and testing purposes.
+)

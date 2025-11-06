@@ -1,0 +1,33 @@
+// Multioutput full smoke: streaming + limits + metadata + metrics
+let model = get_env_or("LEXON_MODEL", "simulated");
+set_default_model(model);
+let out_dir = get_env_or("LEXON_OUT_DIR", "output");
+begin_pipeline("multioutput_smoke");
+
+// Allow common text formats up to 1MB
+set_file_output_limits(["md", "json", "csv", "txt"], 1048576);
+
+// Generate files
+let mo = ask_multioutput(
+  "Generate a brief report (md), small JSON payload, and a tiny CSV table",
+  ["Report.md", "Data.json", "Table.csv"]
+);
+
+// Save via streaming for two files, normal save for the third
+save_multioutput_streaming_file(mo, 0, out_dir + "/mo_Report.md");
+save_multioutput_streaming_file(mo, 1, out_dir + "/mo_Data.json");
+save_multioutput_file(mo, 2, out_dir + "/mo_Table.csv");
+
+// Export metadata and metrics
+let meta = get_multioutput_metadata(mo);
+save_json(meta, out_dir + "/mo_metadata.json");
+let _m = end_pipeline();
+write_metrics_json(out_dir + "/mo_metrics.json");
+
+print("Multioutput smoke completed");
+
+
+
+
+
+

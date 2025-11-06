@@ -1,0 +1,10 @@
+📄 Vector Memory System initialized with SQLite backend
+DEBUG EXECUTOR: Loaded 0 functions: []
+🔧 set_default_model: Setting default model to 'gpt-4o-mini'
+🔧 LlmAdapter: Setting default model to 'gpt-4o-mini'
+✅ set_default_model: Default model updated successfully
+📥 load_json: Loading JSON file 'samples/rag/fixtures/opt_window_results.json'
+[DEBUG] [data_operation] EVENT: Reading JSON
+✅ load_json: JSON loaded successfully
+[DEBUG] [data_operation] COMPLETED in 74.75µs
+[{"content":"Hybrid search blends vector and keyword signals.","hybrid_score":0.88},{"content":"Agent orchestration supports budgets and deadlines.","hybrid_score":0.76},{"content":"Sessions persist context with TTL and GC.","hybrid_score":0.7},{"content":"Lexon provides a DSL for LLM orchestration.","hybrid_score":0.92}]

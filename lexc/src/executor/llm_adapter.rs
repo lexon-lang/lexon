@@ -14,6 +14,7 @@ use std::collections::HashMap;
 // use std::sync::Arc;
 use tokio::sync::{oneshot, Mutex};
 use ureq;
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 /// Gets the configurable OpenAI URL
 #[allow(dead_code)]
@@ -34,19 +35,32 @@ pub struct LlmParams {
     pub seed: Option<u32>,
 }
 
-/// Simple cache for LLM results
+/// Simple cache for LLM results with TTL and GC
 struct LlmCache {
-    /// Key-value cache
-    cache: HashMap<String, String>,
+    cache: HashMap<String, CacheEntry>,
+    ttl_ms: Option<u64>,
+    gc_interval_ms: u64,
+    last_gc_ms: u64,
+}
+
+#[derive(Clone)]
+struct CacheEntry {
+    value: String,
+    inserted_ms: u64,
 }
 
 impl LlmCache {
     fn new() -> Self {
+        let ttl_ms = std::env::var("LEXON_CACHE_TTL_MS").ok().and_then(|v| v.parse::<u64>().ok());
+        let gc_interval_ms = std::env::var("LEXON_CACHE_GC_INTERVAL_MS").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(60_000);
         LlmCache {
             cache: HashMap::new(),
+            ttl_ms,
+            gc_interval_ms,
+            last_gc_ms: 0,
         }
     }
-
+    
     /// Generates a cache key for a prompt
     fn generate_key(
         &self,
@@ -67,15 +81,69 @@ impl LlmCache {
             schema.unwrap_or(""),
         )
     }
-
+    
     /// Searches in the cache
-    fn lookup(&self, key: &str) -> Option<String> {
-        self.cache.get(key).cloned()
+    fn lookup(&mut self, key: &str) -> Option<String> {
+        self.maybe_gc();
+        if let Some(entry) = self.cache.get(key).cloned() {
+            if self.is_expired(entry.inserted_ms) {
+                self.cache.remove(key);
+                None
+            } else {
+                Some(entry.value)
+            }
+        } else { None }
     }
-
+    
     /// Stores in the cache
     fn store(&mut self, key: String, value: String) {
-        self.cache.insert(key, value.clone());
+        let now = Self::now_ms();
+        self.cache.insert(key, CacheEntry { value: value.clone(), inserted_ms: now });
+        self.maybe_gc();
+    }
+
+    fn invalidate(&mut self, key: &str) -> bool {
+        self.cache.remove(key).is_some()
+    }
+
+    fn invalidate_prefix(&mut self, prefix: &str) -> usize {
+        let keys: Vec<String> = self.cache.keys().filter(|k| k.starts_with(prefix)).cloned().collect();
+        let n = keys.len();
+        for k in keys { self.cache.remove(&k); }
+        n
+    }
+
+    fn is_expired(&self, inserted_ms: u64) -> bool {
+        match self.ttl_ms {
+            Some(ttl) => {
+                let now = Self::now_ms();
+                now.saturating_sub(inserted_ms) > ttl
+            }
+            None => false,
+        }
+    }
+
+    fn maybe_gc(&mut self) {
+        let now = Self::now_ms();
+        if now.saturating_sub(self.last_gc_ms) < self.gc_interval_ms { return; }
+        self.last_gc_ms = now;
+        if self.ttl_ms.is_none() { return; }
+        let ttl = self.ttl_ms.unwrap();
+        let keys: Vec<String> = self
+            .cache
+            .iter()
+            .filter(|(_, v)| now.saturating_sub(v.inserted_ms) > ttl)
+            .map(|(k, _)| k.clone())
+            .collect();
+        for k in keys { self.cache.remove(&k); }
+    }
+
+    fn now_ms() -> u64 {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_else(|_| std::time::Duration::from_millis(0))
+            .as_millis() as u64
     }
 }
 
@@ -89,6 +157,70 @@ pub struct LlmAdapter {
     estimated_cost: f64,
     /// API configuration
     api_config: ApiConfig,
+    /// A/B variant counters
+    ab_variant_counts: HashMap<String, u64>,
+    /// Provider health state
+    provider_health: HashMap<String, ProviderHealthState>,
+    /// Provider budgets and spend tracking (USD)
+    provider_budgets_usd: HashMap<String, f64>,
+    provider_spent_usd: HashMap<String, f64>,
+    /// Provider capacity map (0 = unavailable)
+    provider_capacity: HashMap<String, i32>,
+    /// Provider call statistics for failure-rate policies
+    provider_call_stats: HashMap<String, ProviderCallStats>,
+    /// Per-call logs for metrics export
+    llm_call_logs: Vec<LlmCallLog>,
+    /// Generic providers configured at runtime
+    custom_providers: HashMap<String, ProviderConfig>,
+    /// Optional mapping from model name/prefix to provider key
+    model_provider_overrides: HashMap<String, String>,
+    /// Last routing decision (for metrics/debug)
+    last_routing_decision: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone)]
+struct ProviderHealthState {
+    status: String, // "up" | "down"
+    last_checked_epoch: u64,
+    failure_count: u32,
+    next_probe_epoch: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LlmCallLog {
+    pub model: String,
+    pub elapsed_ms: u128,
+    pub tokens: usize,
+    pub cost_usd: f64,
+}
+
+#[derive(Debug, Clone)]
+pub enum ProviderKind {
+    HuggingFace,
+    Ollama,
+    Custom,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProviderConfig {
+    pub kind: ProviderKind,
+    pub base_url: String,
+    pub api_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ProviderCallStats {
+    calls: u64,
+    failures: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RoutingWeights {
+    capacity: f64,
+    health: f64,
+    failrate: f64,
+    budget: f64,
+    canary: f64,
 }
 
 impl LlmAdapter {
@@ -98,20 +230,332 @@ impl LlmAdapter {
         api_config.load_from_env();
         api_config.load_from_toml(); // Load configuration from lexon.toml
 
-        LlmAdapter {
+        let mut adapter = LlmAdapter {
             cache: LlmCache::new(),
             token_count: 0,
             estimated_cost: 0.0,
             api_config,
+            ab_variant_counts: HashMap::new(),
+            provider_health: HashMap::new(),
+            provider_budgets_usd: Self::load_provider_budgets_from_env(),
+            provider_spent_usd: HashMap::new(),
+            provider_capacity: Self::load_provider_capacity_from_env(),
+            provider_call_stats: HashMap::new(),
+            llm_call_logs: Vec::new(),
+            custom_providers: HashMap::new(),
+            model_provider_overrides: HashMap::new(),
+            last_routing_decision: None,
+        };
+        adapter.load_providers_from_toml();
+        adapter
+    }
+
+    pub fn get_call_logs_json(&self) -> serde_json::Value {
+        let arr: Vec<serde_json::Value> = self
+            .llm_call_logs
+            .iter()
+            .map(|l| serde_json::json!({
+                "model": l.model,
+                "elapsed_ms": l.elapsed_ms,
+                "tokens": l.tokens,
+                "cost_usd": l.cost_usd,
+            }))
+            .collect();
+        serde_json::Value::Array(arr)
+    }
+
+    pub fn cache_invalidate(&mut self, key: &str) -> bool {
+        self.cache.invalidate(key)
+    }
+
+    pub fn cache_invalidate_prefix(&mut self, prefix: &str) -> usize {
+        self.cache.invalidate_prefix(prefix)
+    }
+
+    fn load_providers_from_toml(&mut self) {
+        if let Some(ref toml) = self.api_config.toml_config {
+            let mut regs: Vec<(String, ProviderConfig)> = Vec::new();
+            let mut ovs: Vec<(String, String)> = Vec::new();
+            if let Some(providers) = toml.get("providers").and_then(|v| v.as_table()) {
+                for (name, cfg) in providers {
+                    if let Some(tab) = cfg.as_table() {
+                        let kind = tab.get("kind").and_then(|v| v.as_str()).unwrap_or("custom").to_lowercase();
+                        let base_url = tab.get("base_url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let api_key = tab.get("api_key").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        let p_kind = match kind.as_str() { "huggingface"=> ProviderKind::HuggingFace, "ollama"=> ProviderKind::Ollama, _=> ProviderKind::Custom };
+                        if !base_url.is_empty() { regs.push((name.clone(), ProviderConfig { kind: p_kind, base_url, api_key })); }
+                    }
+                }
+            }
+            if let Some(ov) = toml.get("providers").and_then(|p| p.get("model_overrides")).and_then(|v| v.as_table()) {
+                for (model, prov) in ov {
+                    if let Some(pk) = prov.as_str() { ovs.push((model.clone(), pk.to_string())); }
+                }
+            }
+            for (name, cfg) in regs { self.register_provider(name, cfg); }
+            for (model, pk) in ovs { self.override_model_provider(model, pk); }
         }
     }
 
+    pub fn register_provider(&mut self, name: String, cfg: ProviderConfig) {
+        self.custom_providers.insert(name, cfg);
+    }
+
+    pub fn override_model_provider(&mut self, model: String, provider_key: String) {
+        self.model_provider_overrides.insert(model, provider_key);
+    }
+
+    fn load_provider_budgets_from_env() -> HashMap<String, f64> {
+        let mut map = HashMap::new();
+        if let Ok(s) = std::env::var("LEXON_PROVIDER_BUDGETS") {
+            for ent in s.split(',') {
+                if let Some((k,v)) = ent.split_once('=') {
+                    if let Ok(val) = v.trim().parse::<f64>() {
+                        map.insert(k.trim().to_lowercase(), val);
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    fn estimate_cost_usd(&self) -> f64 {
+        std::env::var("LEXON_LLM_EST_COST_USD").ok().and_then(|v| v.parse().ok()).unwrap_or(0.001)
+    }
+
+    fn failure_rate_for(&self, provider: &str) -> Option<f64> {
+        self.provider_call_stats.get(provider).map(|s| if s.calls == 0 { 0.0 } else { s.failures as f64 / s.calls as f64 })
+    }
+
+    fn capacity_for(&self, provider: &str) -> i32 {
+        *self.provider_capacity.get(provider).unwrap_or(&1)
+    }
+
+    fn is_healthy(&self, provider: &str) -> bool {
+        self.provider_health.get(provider).map(|h| h.status != "down").unwrap_or(true)
+    }
+
+    fn budget_allows(&self, provider: &str, est: f64) -> bool {
+        let budget = *self.provider_budgets_usd.get(provider).unwrap_or(&f64::INFINITY);
+        let spent = *self.provider_spent_usd.get(provider).unwrap_or(&0.0);
+        spent + est <= budget
+    }
+
+    fn pick_provider_v2(&mut self, model: &str, user_prompt: Option<&str>) -> (String, String, serde_json::Value) {
+        let mut reasons: Vec<serde_json::Value> = Vec::new();
+        let mut candidates: Vec<String> = vec!["openai".into(), "anthropic".into(), "google".into()];
+        for k in self.custom_providers.keys() { candidates.push(k.clone()); }
+        candidates.push("simulated".into());
+
+        let est_cost = self.estimate_cost_usd();
+        let w = Self::load_routing_weights();
+        let mut best: Option<(String, f64)> = None;
+        let mut best_adjusted_model: String = model.to_string();
+        let mut scored: Vec<serde_json::Value> = Vec::new();
+        for prov in candidates {
+            let mut score: f64 = 0.0;
+            let mut cause: Vec<String> = Vec::new();
+
+            // capacity
+            let cap = self.capacity_for(&prov);
+            if cap <= 0 { score = f64::NEG_INFINITY; cause.push("capacity_0".into()); }
+            else { score += 1.0 * w.capacity; cause.push(format!("capacity_{}", cap)); }
+
+            // health
+            if !self.is_healthy(&prov) { score -= 1.0 * w.health; cause.push("health_down".into()); } else { score += 0.3 * w.health; cause.push("health_up".into()); }
+
+            // failure rate
+            if let Some(fr) = self.failure_rate_for(&prov) {
+                if fr > 0.5 { score -= 0.5 * w.failrate; cause.push(format!("failrate_high_{:.2}", fr)); } else { score += 0.1 * w.failrate; }
+            }
+
+            // budget
+            if !self.budget_allows(&prov, est_cost) { score = f64::NEG_INFINITY; cause.push("budget_exceeded".into()); }
+            else { score += 0.2 * w.budget; }
+
+            // canary slight nudging if bucketed
+            if let (Ok(canary_model), Ok(percent_str)) = (std::env::var("LEXON_CANARY_MODEL"), std::env::var("LEXON_CANARY_PERCENT")) {
+                if let Ok(percent) = percent_str.parse::<u32>() {
+                    let pct = percent.min(100);
+                    let mut h: u64 = 1469598103934665603;
+                    if let Some(up) = user_prompt { for b in up.as_bytes() { h ^= *b as u64; h = h.wrapping_mul(1099511628211); } }
+                    let bucket = (h % 100) as u32;
+                    if bucket < pct && canary_model == model { score += 0.05 * w.canary; cause.push("canary_bucket".into()); }
+                }
+            }
+
+            // track
+            scored.push(serde_json::json!({ "provider": prov, "score": score, "reasons": cause }));
+            if best.as_ref().map(|(_, s)| score > *s).unwrap_or(true) {
+                best = Some((prov.clone(), score));
+            }
+        }
+
+        let (chosen, score) = best.unwrap_or(("simulated".into(), f64::NEG_INFINITY));
+        // Adjust model for prefixed providers
+        let mut adjusted_model = model.to_string();
+        if chosen == "huggingface" && model.starts_with("hf:") { adjusted_model = model[3..].to_string(); }
+        if chosen == "ollama" && model.starts_with("ollama:") { adjusted_model = model[7..].to_string(); }
+
+        let decision = serde_json::json!({
+            "policy": "v2",
+            "candidates": scored,
+            "chosen": { "provider": chosen, "score": score, "model": adjusted_model },
+            "est_cost_usd": est_cost,
+            "weights": { "capacity": w.capacity, "health": w.health, "failrate": w.failrate, "budget": w.budget, "canary": w.canary },
+        });
+        (chosen, adjusted_model, decision)
+    }
+
+    fn load_routing_weights() -> RoutingWeights {
+        if let Ok(s) = std::env::var("LEXON_ROUTING_WEIGHTS") {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
+                let g = |k: &str, d: f64| v.get(k).and_then(|x| x.as_f64()).unwrap_or(d);
+                return RoutingWeights { capacity: g("capacity", 1.0), health: g("health", 1.0), failrate: g("failrate", 1.0), budget: g("budget", 1.0), canary: g("canary", 1.0) };
+            }
+        }
+        RoutingWeights { capacity: 1.0, health: 1.0, failrate: 1.0, budget: 1.0, canary: 1.0 }
+    }
+
+    fn load_provider_capacity_from_env() -> HashMap<String, i32> {
+        let mut map = HashMap::new();
+        if let Ok(s) = std::env::var("LEXON_PROVIDER_CAPACITY") {
+            for ent in s.split(',') {
+                if let Some((k,v)) = ent.split_once('=') {
+                    if let Ok(val) = v.trim().parse::<i32>() {
+                        map.insert(k.trim().to_lowercase(), val);
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    fn now_epoch() -> u64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(Duration::from_secs(0)).as_secs() }
+
+    fn provider_models_url(&self, provider: &str) -> String {
+        match provider {
+            "openai" => std::env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string()) + "/v1/models",
+            "anthropic" => std::env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| "https://api.anthropic.com".to_string()) + "/v1/models",
+            "google" => std::env::var("GOOGLE_BASE_URL").unwrap_or_else(|_| "https://generativelanguage.googleapis.com".to_string()) + "/v1/models",
+            _ => "".to_string(),
+        }
+    }
+
+    fn maybe_probe_provider(&mut self, provider: &str) -> bool {
+        if provider == "simulated" || provider == "unknown" { return true; }
+        let now = Self::now_epoch();
+        let url = self.provider_models_url(provider);
+        let state = self.provider_health.entry(provider.to_string()).or_insert(ProviderHealthState{ status: "unknown".to_string(), last_checked_epoch: 0, failure_count: 0, next_probe_epoch: 0 });
+        if now < state.next_probe_epoch { return state.status != "down"; }
+        if url.is_empty() { state.status = "up".to_string(); state.last_checked_epoch = now; return true; }
+
+        let mut request = ureq::get(&url).set("Accept", "application/json");
+        // attach auth if available
+        let headers = self.api_config.get_auth_headers(provider, "");
+        for (k,v) in headers { request = request.set(&k, &v); }
+
+        let ok = match request.call() {
+            Ok(resp) => resp.status() == 200,
+            Err(_) => false,
+        };
+        state.last_checked_epoch = now;
+        if ok { state.status = "up".to_string(); state.failure_count = 0; state.next_probe_epoch = now + 15; }
+        else {
+            state.status = "down".to_string();
+            state.failure_count = state.failure_count.saturating_add(1);
+            let backoff = 2u64.saturating_pow(state.failure_count.min(6)) * 5; // 5,10,20,... cap via min
+            state.next_probe_epoch = now + backoff.min(120);
+        }
+        state.status != "down"
+    }
+
+    pub fn routing_metrics_json(&self) -> serde_json::Value {
+        let ab = self.ab_variant_counts.iter().map(|(k,v)| (k.clone(), serde_json::Value::from(*v))).collect::<serde_json::Map<_,_>>();
+        let health = self.provider_health.iter().map(|(k,s)| {
+            let obj = serde_json::json!({
+                "status": s.status,
+                "last_checked_epoch": s.last_checked_epoch,
+                "failure_count": s.failure_count,
+                "next_probe_epoch": s.next_probe_epoch,
+            });
+            (k.clone(), obj)
+        }).collect::<serde_json::Map<_,_>>();
+        let budgets = self.provider_budgets_usd.iter().map(|(k,v)| (k.clone(), serde_json::Value::from(*v))).collect::<serde_json::Map<_,_>>();
+        let spent = self.provider_spent_usd.iter().map(|(k,v)| (k.clone(), serde_json::Value::from(*v))).collect::<serde_json::Map<_,_>>();
+        let capacity = self.provider_capacity.iter().map(|(k,v)| (k.clone(), serde_json::Value::from(*v))).collect::<serde_json::Map<_,_>>();
+        let mut calls = serde_json::Map::new();
+        let mut failures = serde_json::Map::new();
+        let mut failure_rate = serde_json::Map::new();
+        for (prov, st) in &self.provider_call_stats {
+            calls.insert(prov.clone(), serde_json::Value::from(st.calls));
+            failures.insert(prov.clone(), serde_json::Value::from(st.failures));
+            let rate = if st.calls == 0 { 0.0 } else { st.failures as f64 / st.calls as f64 };
+            failure_rate.insert(prov.clone(), serde_json::Value::from(rate));
+        }
+        let mut obj = serde_json::json!({
+            "ab_variants": ab,
+            "provider_health": health,
+            "provider_budgets": budgets,
+            "provider_spent": spent,
+            "provider_capacity": capacity,
+            "provider_calls": calls,
+            "provider_failures": failures,
+            "provider_failure_rate": failure_rate,
+        });
+        if let Some(ref d) = self.last_routing_decision {
+            if let Some(map) = obj.as_object_mut() {
+                map.insert("last_decision".to_string(), d.clone());
+            }
+        }
+        obj
+    }
+
+    fn providers_to_probe(&self) -> Vec<String> {
+        if let Ok(list) = std::env::var("LEXON_ROUTING_HEALTH_PROVIDERS") {
+            let v: Vec<String> = list
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if !v.is_empty() { return v; }
+        }
+        vec!["openai".to_string(), "anthropic".to_string(), "google".to_string()]
+    }
+
+    pub fn tick_health(&mut self) {
+        let providers = self.providers_to_probe();
+        for p in providers {
+            let _ = self.maybe_probe_provider(&p);
+        }
+    }
+
+    fn maybe_consume_budget(&mut self, provider: &str, estimated_cost_usd: f64) -> bool {
+        let key = provider.to_lowercase();
+        if let Some(limit) = self.provider_budgets_usd.get(&key).cloned() {
+            let spent = self.provider_spent_usd.entry(key.clone()).or_insert(0.0);
+            if *spent + estimated_cost_usd > limit {
+                return false;
+            }
+            *spent += estimated_cost_usd;
+        }
+        true
+    }
+
+    /// Public helper: attempts to consume budget for the provider inferred by model.
+    /// Returns false if budget would be exceeded.
+    pub fn consume_budget_for_model(&mut self, model_name: &str, estimated_cost_usd: f64) -> bool {
+        let (provider, _needs_key) = self.determine_provider(model_name);
+        if provider == "simulated" || provider == "unknown" { return true; }
+        self.maybe_consume_budget(&provider, estimated_cost_usd)
+    }
+    
     /// Counts tokens (simulated)
     fn count_tokens(&self, text: &str) -> usize {
         // Very basic simulation: approximately 4 characters per token
         text.len() / 4 + 1
     }
-
+    
     /// Makes call to OpenAI API
     #[allow(dead_code, clippy::too_many_arguments)]
     fn call_openai_api(
@@ -186,7 +630,7 @@ impl LlmAdapter {
             ))
         }
     }
-
+    
     /// Generates simulated response for unsupported models
     #[allow(dead_code)]
     fn generate_simulated_response(
@@ -197,20 +641,20 @@ impl LlmAdapter {
         provider_name: &str,
     ) -> Result<String> {
         let mut response = String::new();
-
+        
         response.push_str(&format!(
             "🤖 SIMULATED RESPONSE from {} ({})\n",
             model_name, provider_name
         ));
-
+        
         if let Some(sys) = system_prompt {
             response.push_str(&format!("SYSTEM: {}\n", sys));
         }
-
+        
         if let Some(user) = user_prompt {
             response.push_str(&format!("USER: {}\n", user));
         }
-
+        
         // Generate model-specific response
         if model_name.starts_with("claude-") {
             response.push_str("\nClaude-style response: I understand your question and will provide a thoughtful, detailed analysis based on the context provided.\n");
@@ -219,24 +663,24 @@ impl LlmAdapter {
         } else {
             response.push_str("\nGeneric simulated response: This is a placeholder response for testing purposes.\n");
         }
-
+        
         // Token counting (simulated)
         let prompt_tokens = self.count_tokens(system_prompt.unwrap_or(""))
             + self.count_tokens(user_prompt.unwrap_or(""));
         let completion_tokens = self.count_tokens(&response);
-
+        
         println!("📊 Token usage (simulated):");
         println!("   - Model: {} ({})", model_name, provider_name);
         println!("   - Prompt tokens: {}", prompt_tokens);
         println!("   - Completion tokens: {}", completion_tokens);
         println!("   - Total tokens: {}", prompt_tokens + completion_tokens);
-
+        
         self.token_count += prompt_tokens + completion_tokens;
         self.estimated_cost += (prompt_tokens + completion_tokens) as f64 * 0.00003;
-
+        
         Ok(response)
     }
-
+    
     /// LLM call with structured parameters
     pub async fn call_llm_structured(&mut self, params: LlmParams) -> Result<String> {
         // Generate a cache key
@@ -247,26 +691,26 @@ impl LlmAdapter {
             Some(&params.user_prompt),
             None, // schema se maneja externamente
         );
-
+        
         // Check the cache
         if let Some(cached_result) = self.cache.lookup(&cache_key) {
             println!("🔄 Cache hit! Reusing previous result.");
             return Ok(cached_result);
         }
-
+        
         // Token counting (simulado)
         let prompt_tokens = self.count_tokens(params.system_prompt.as_deref().unwrap_or(""))
             + self.count_tokens(&params.user_prompt);
-
+        
         // Build the simulated response
         let mut response = String::new();
-
+        
         if let Some(sys) = &params.system_prompt {
             response.push_str(&format!("SYSTEM: {}\n", sys));
         }
-
+        
         response.push_str(&format!("USER: {}\n", params.user_prompt));
-
+        
         // Generate response based on response_format
         if let Some(format) = &params.response_format {
             if format == "json_object" {
@@ -284,7 +728,7 @@ impl LlmAdapter {
         } else {
             response.push_str("\nRESPONSE: This is a simulated LLM response.\n");
         }
-
+        
         // Apply token limit if specified
         if let Some(max_tokens) = params.max_tokens {
             let max_chars = (max_tokens as usize) * 4; // Approximation
@@ -293,10 +737,10 @@ impl LlmAdapter {
                 response.push_str("...[truncated]");
             }
         }
-
+        
         // Token counting of output (simulated)
         let completion_tokens = self.count_tokens(&response);
-
+        
         // Logging of tokens
         println!("📊 Token usage:");
         println!("   - Prompt tokens: {}", prompt_tokens);
@@ -306,24 +750,24 @@ impl LlmAdapter {
         if let Some(temp) = params.temperature {
             println!("   - Temperature: {}", temp);
         }
-
+        
         // Cost estimation (simulated, based on GPT-4)
         let prompt_cost = (prompt_tokens as f64) * 0.00003;
         let completion_cost = (completion_tokens as f64) * 0.00006;
         let total_cost = prompt_cost + completion_cost;
-
+        
         println!("💰 Estimated cost: ${:.6}", total_cost);
-
+        
         // Update counters
         self.token_count += prompt_tokens + completion_tokens;
         self.estimated_cost += total_cost;
-
+        
         // Store in cache
         self.cache.store(cache_key, response.clone());
-
+        
         Ok(response)
     }
-
+    
     /// LLM call (original method for compatibility)
     #[allow(clippy::too_many_arguments)]
     pub fn call_llm(
@@ -342,7 +786,7 @@ impl LlmAdapter {
         );
 
         // If no model is specified, use the default model of the default provider
-        let effective_model = match model {
+        let mut effective_model = match model {
             Some(m) => m,
             None => {
                 // Get the default provider and its default model
@@ -369,6 +813,52 @@ impl LlmAdapter {
             }
         };
 
+        // Routing policy: cost/latency/none via env LEXON_ROUTING_POLICY
+        if let Ok(policy) = std::env::var("LEXON_ROUTING_POLICY") {
+            let p = policy.to_lowercase();
+            if p == "cost" {
+                // Prefer cheaper defaults when requested
+                if effective_model == "gpt-4" { effective_model = "gpt-3.5-turbo"; }
+                if effective_model.starts_with("claude-3-5-sonnet") { effective_model = "claude-3-haiku-20240307"; }
+                if effective_model == "gemini-1.5-pro" { effective_model = "gemini-1.5-flash"; }
+            } else if p == "latency" {
+                // Prefer faster family variants
+                if effective_model == "gpt-4" { effective_model = "gpt-4-turbo"; }
+                if effective_model == "gemini-1.5-pro" { effective_model = "gemini-1.5-flash"; }
+            }
+        }
+
+        // A/B testing: optional alternating between models via LEXON_AB_MODELS="m1,m2"
+        let mut selected_override: Option<String> = None;
+        if let Ok(ab) = std::env::var("LEXON_AB_MODELS") {
+            let parts: Vec<String> = ab.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+            if parts.len() >= 2 {
+                // Hash the user prompt to choose bucket deterministically
+                let mut h: u64 = 1469598103934665603; // FNV offset
+                if let Some(up) = user_prompt { for b in up.as_bytes() { h ^= *b as u64; h = h.wrapping_mul(1099511628211); } }
+                let idx = (h % (parts.len() as u64)) as usize;
+                selected_override = Some(parts[idx].clone());
+                println!("[ROUTING] A/B selected model: {}", selected_override.as_deref().unwrap());
+                // increment variant counter
+                let key = parts[idx].clone();
+                *self.ab_variant_counts.entry(key).or_insert(0) += 1;
+            }
+        }
+        // Canary rollout
+        if let (Ok(canary_model), Ok(percent_str)) = (std::env::var("LEXON_CANARY_MODEL"), std::env::var("LEXON_CANARY_PERCENT")) {
+            if let Ok(percent) = percent_str.parse::<u32>() {
+                let pct = percent.min(100);
+                let mut h: u64 = 1469598103934665603; // FNV
+                if let Some(up) = user_prompt { for b in up.as_bytes() { h ^= *b as u64; h = h.wrapping_mul(1099511628211); } }
+                let bucket = (h % 100) as u32;
+                if bucket < pct {
+                    println!("[ROUTING] Canary selected model: {} ({}%)", canary_model, pct);
+                    selected_override = Some(canary_model);
+                }
+            }
+        }
+        if let Some(sel) = selected_override.as_deref() { effective_model = sel; }
+
         // Generate a cache key
         let cache_key = self.cache.generate_key(
             Some(effective_model),
@@ -377,7 +867,7 @@ impl LlmAdapter {
             user_prompt,
             schema,
         );
-
+        
         // Check the cache
         if let Some(cached_result) = self.cache.lookup(&cache_key) {
             println!("🔄 Cache hit! Reusing previous result.");
@@ -393,96 +883,226 @@ impl LlmAdapter {
                 user_prompt,
                 "SIMULATED",
             );
+            }
+            
+        // Determine the provider based on the model name
+        let (mut provider, needs_key) = self.determine_provider(effective_model);
+
+        // Routing v2: multi-factor scoring across providers
+        let mut effective_model_owned: Option<String> = None;
+        let mut pending_model_update: Option<String> = None;
+        if std::env::var("LEXON_ROUTING_POLICY").ok().map(|v| v.to_lowercase()) == Some("v2".into()) {
+            let (p2, adj_model, decision) = self.pick_provider_v2(effective_model, user_prompt);
+            self.last_routing_decision = Some(decision);
+            provider = p2;
+            pending_model_update = Some(adj_model);
         }
 
-        // Determine the provider based on the model name
-        let (provider, needs_key) = self.determine_provider(effective_model);
+        // Check custom providers mapping (exact match or prefix like hf:)
+        if provider == "unknown" {
+            let model_str = effective_model.to_string();
+            if let Some(p) = self.model_provider_overrides.get(&model_str).cloned() {
+                provider = p;
+            } else if model_str.starts_with("hf:") {
+                provider = "huggingface".to_string();
+                // strip prefix
+                pending_model_update = Some(model_str[3..].to_string());
+            } else if model_str.starts_with("ollama:") {
+                provider = "ollama".to_string();
+                pending_model_update = Some(model_str[7..].to_string());
+            }
+        }
 
+        if let Some(new_model) = pending_model_update.take() {
+            effective_model_owned = Some(new_model);
+            // Safe unwrap: just set above
+            effective_model = effective_model_owned.as_deref().unwrap();
+        }
+
+        // Health checks override (env): LEXON_PROVIDER_HEALTH="openai=down,anthropic=up"
+        if let Ok(health) = std::env::var("LEXON_PROVIDER_HEALTH") {
+            for ent in health.split(',') {
+                if let Some((k,v)) = ent.split_once('=') {
+                    if k.trim().eq_ignore_ascii_case(&provider) && v.trim().eq_ignore_ascii_case("down") {
+                        println!("[ROUTING] Provider '{}' marked down; falling back to simulated", provider);
+                        provider = "simulated".to_string();
+                        effective_model = "simulated";
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Capacity override: if capacity set to 0, treat as unavailable
+        if let Some(cap) = self.provider_capacity.get(&provider) { if *cap <= 0 { println!("[ROUTING] Provider '{}' capacity 0; falling back to simulated", provider); provider = "simulated".to_string(); effective_model = "simulated"; } }
+
+        // Probe real health if not forced down
+        if provider != "simulated" {
+            if !self.maybe_probe_provider(&provider) {
+                println!("[ROUTING] Provider '{}' unhealthy; falling back to simulated", provider);
+                provider = "simulated".to_string();
+                effective_model = "simulated";
+            }
+        }
+
+        // Failure-rate policy: if too many recent failures, avoid provider
+        if provider != "simulated" {
+            let max_rate: f64 = std::env::var("LEXON_PROVIDER_MAX_FAILURE_RATE").ok().and_then(|v| v.parse().ok()).unwrap_or(2.0);
+            let min_calls: u64 = std::env::var("LEXON_PROVIDER_MIN_CALLS_FOR_RATE").ok().and_then(|v| v.parse().ok()).unwrap_or(3);
+            if let Some(stats) = self.provider_call_stats.get(&provider) {
+                if stats.calls >= min_calls && stats.failures as f64 / stats.calls as f64 > max_rate {
+                    println!("[ROUTING] Provider '{}' failure-rate exceeded; falling back to simulated", provider);
+                    provider = "simulated".to_string();
+                    effective_model = "simulated";
+                }
+            }
+        }
+
+        // Budget enforcement (simple per-call estimate)
+        let est_cost: f64 = std::env::var("LEXON_LLM_EST_COST_USD").ok().and_then(|v| v.parse().ok()).unwrap_or(0.001);
+        if provider != "simulated" && !self.maybe_consume_budget(&provider, est_cost) {
+            return Err(ExecutorError::LlmError(format!("Provider budget exceeded for '{}'", provider)));
+        }
+
+        // Unified retry/backoff
+        let llm_retries: usize = std::env::var("LEXON_LLM_RETRIES").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+        let backoff_ms: u64 = std::env::var("LEXON_LLM_BACKOFF_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(250);
+        let mut attempt: usize = 0;
+        loop {
         // Check if we have the necessary API key
-        match provider.as_str() {
-            "openai" => {
-                if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
+        let res: Result<String> = match provider.as_str() {
+                "openai" => {
+                    if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
                     // Verify that the model is compatible with OpenAI
                     if !self.is_openai_model(effective_model) {
-                        return Err(ExecutorError::LlmError(
+                        Err(ExecutorError::LlmError(
                             format!("Model '{}' is not supported by OpenAI API. Available OpenAI models: gpt-4, gpt-4-turbo, gpt-3.5-turbo, gpt-4-vision-preview", effective_model)
-                        ));
-                    }
-
-                    return self.call_openai_api_real(
+                        ))
+                    } else {
+                        self.call_openai_api_real(
                         effective_model,
                         temperature,
                         system_prompt,
                         user_prompt,
                         max_tokens,
                         &api_key,
-                        cache_key,
-                    );
-                } else if needs_key {
-                    return Err(ExecutorError::LlmError(format!(
+                            cache_key.clone(),
+                        )
+                    }
+                    } else if needs_key {
+                    Err(ExecutorError::LlmError(format!(
                         "Model '{}' requires OPENAI_API_KEY environment variable to be set",
                         effective_model
-                    )));
-                }
+                    )))
+                } else { Err(ExecutorError::LlmError("OPENAI_API_KEY not set".into())) }
             }
-            "anthropic" => {
-                if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
+                "anthropic" => {
+                    if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
                     if !self.is_anthropic_model(effective_model) {
-                        return Err(ExecutorError::LlmError(
+                        Err(ExecutorError::LlmError(
                             format!("Model '{}' is not supported by Anthropic API. Available Anthropic models: claude-3-opus, claude-3-sonnet, claude-3-haiku, claude-instant, claude-3.7-sonnet, claude-4-sonnet, claude-4-opus", effective_model)
-                        ));
-                    }
-
-                    return self.call_anthropic_api(
+                        ))
+                    } else {
+                        self.call_anthropic_api(
                         effective_model,
                         temperature,
                         system_prompt,
                         user_prompt,
                         max_tokens,
                         &api_key,
-                        cache_key,
-                    );
-                } else if needs_key {
-                    return Err(ExecutorError::LlmError(format!(
+                            cache_key.clone(),
+                        )
+                    }
+                    } else if needs_key {
+                    Err(ExecutorError::LlmError(format!(
                         "Model '{}' requires ANTHROPIC_API_KEY environment variable to be set",
                         effective_model
-                    )));
-                }
+                    )))
+                } else { Err(ExecutorError::LlmError("ANTHROPIC_API_KEY not set".into())) }
             }
-            "google" => {
-                if let Ok(api_key) = std::env::var("GOOGLE_API_KEY") {
+                "google" => {
+                    if let Ok(api_key) = std::env::var("GOOGLE_API_KEY") {
                     if !self.is_google_model(effective_model) {
-                        return Err(ExecutorError::LlmError(
+                        Err(ExecutorError::LlmError(
                             format!("Model '{}' is not supported by Google API. Available Google models: gemini-pro, gemini-pro-vision", effective_model)
-                        ));
-                    }
-
-                    return self.call_google_api(
+                        ))
+                    } else {
+                        self.call_google_api(
                         effective_model,
                         temperature,
                         system_prompt,
                         user_prompt,
                         max_tokens,
                         &api_key,
-                        cache_key,
-                    );
-                } else if needs_key {
-                    return Err(ExecutorError::LlmError(format!(
+                            cache_key.clone(),
+                        )
+                    }
+                    } else if needs_key {
+                    Err(ExecutorError::LlmError(format!(
                         "Model '{}' requires GOOGLE_API_KEY environment variable to be set",
                         effective_model
-                    )));
-                }
+                    )))
+                } else { Err(ExecutorError::LlmError("GOOGLE_API_KEY not set".into())) }
             }
-            _ => {
+            "simulated" => {
+                self.generate_simulated_response_old(
+                    effective_model,
+                    system_prompt,
+                    user_prompt,
+                    "SIMULATED",
+                )
+            }
+            "huggingface" => {
+                // use configured or env key/base_url
+                let base = self
+                    .custom_providers
+                    .get("huggingface")
+                    .map(|c| c.base_url.clone())
+                    .unwrap_or_else(|| "https://api-inference.huggingface.co".to_string());
+                let api_key = self
+                    .custom_providers
+                    .get("huggingface")
+                    .and_then(|c| c.api_key.clone())
+                    .or_else(|| std::env::var("HUGGINGFACE_API_KEY").ok())
+                    .ok_or_else(|| ExecutorError::LlmError("HUGGINGFACE_API_KEY not set".to_string()))?;
+                self.call_huggingface_api(effective_model, system_prompt, user_prompt, &base, &api_key, cache_key.clone())
+            }
+            "ollama" => {
+                let base = self
+                    .custom_providers
+                    .get("ollama")
+                    .map(|c| c.base_url.clone())
+                    .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
+                self.call_ollama_api(effective_model, system_prompt, user_prompt, &base, cache_key.clone())
+            }
+                _ => {
                 // Unknown model - give clear error
-                return Err(ExecutorError::LlmError(
+                Err(ExecutorError::LlmError(
                     format!("Unknown model '{}'. Supported models: OpenAI (gpt-4, gpt-3.5-turbo), Anthropic (claude-3-opus, claude-3-sonnet, claude-3.7-sonnet, claude-4-sonnet, claude-4-opus), Google (gemini-pro), or 'simulated' for testing", effective_model)
-                    ));
+                    ))
             }
+        };
+        if let Err(e) = res {
+            if attempt >= llm_retries {
+                // Note failure for provider statistics before returning
+                if provider != "simulated" {
+                    let st = self.provider_call_stats.entry(provider.clone()).or_default();
+                    st.calls = st.calls.saturating_add(1);
+                    st.failures = st.failures.saturating_add(1);
+                }
+                return Err(e);
+            }
+            attempt += 1;
+            std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
+            continue;
         }
-
-        // If we get here, generate simulated response as fallback
-        self.generate_simulated_response_old("default", system_prompt, user_prompt, "FALLBACK")
+        // res is Ok: note success and return
+        if provider != "simulated" {
+            let st = self.provider_call_stats.entry(provider.clone()).or_default();
+            st.calls = st.calls.saturating_add(1);
+        }
+        return res;
+        }
     }
 
     /// Determines the provider and if it needs an API key based on the model name
@@ -500,7 +1120,7 @@ impl LlmAdapter {
             ("unknown".to_string(), true)
         }
     }
-
+    
     /// Verifies if a model is compatible with OpenAI
     fn is_openai_model(&self, model_name: &str) -> bool {
         // Use dynamic configuration rather than hardcoding
@@ -520,7 +1140,7 @@ impl LlmAdapter {
                 | "gpt-4-1106-preview"
         )
     }
-
+    
     /// Verifies if a model is compatible with Anthropic
     fn is_anthropic_model(&self, model_name: &str) -> bool {
         // Use dynamic configuration rather than hardcoding
@@ -543,9 +1163,9 @@ impl LlmAdapter {
                     | "claude-instant"
                     | "claude-2"
                     | "claude-2.1"
-            )
+        )
     }
-
+    
     /// Verifies if a model is compatible with Google
     fn is_google_model(&self, model_name: &str) -> bool {
         // Use dynamic configuration rather than hardcoding
@@ -563,7 +1183,7 @@ impl LlmAdapter {
                 | "gemini-1.5-flash"
         )
     }
-
+    
     /// Real call to OpenAI API with validation
     #[allow(clippy::too_many_arguments)]
     fn call_openai_api_real(
@@ -681,7 +1301,80 @@ impl LlmAdapter {
             }
         }
     }
+    
+    fn call_huggingface_api(
+        &mut self,
+        model_name: &str,
+        system_prompt: Option<&str>,
+        user_prompt: Option<&str>,
+        base_url: &str,
+        api_key: &str,
+        cache_key: String,
+    ) -> Result<String> {
+        let url = format!("{}/models/{}", base_url.trim_end_matches('/'), model_name);
+        let prompt = format!("{}{}",
+            system_prompt.unwrap_or(""),
+            user_prompt.unwrap_or("")
+        );
+        let body = serde_json::json!({"inputs": prompt});
+        let mut request = ureq::post(&url)
+            .set("Authorization", &format!("Bearer {}", api_key))
+            .set("Content-Type", "application/json");
+        let resp = request
+            .send_json(body)
+            .map_err(|e| ExecutorError::LlmError(format!("HF HTTP error: {}", e)))?;
+        if resp.status() != 200 {
+            let status = resp.status();
+            let txt = resp.into_string().unwrap_or_default();
+            return Err(ExecutorError::LlmError(format!("HF API error ({}): {}", status, txt)));
+        }
+        let val: serde_json::Value = resp
+            .into_json()
+            .map_err(|e| ExecutorError::LlmError(format!("HF JSON parse error: {}", e)))?;
+        // Heuristic: try variations
+        let mut out = String::new();
+        if let Some(arr) = val.as_array() {
+            if let Some(first) = arr.get(0) {
+                if let Some(txt) = first.get("generated_text").and_then(|x| x.as_str()) { out = txt.to_string(); }
+            }
+        }
+        if out.is_empty() {
+            out = val.to_string();
+        }
+        self.cache.store(cache_key, out.clone());
+        Ok(out)
+    }
 
+    fn call_ollama_api(
+        &mut self,
+        model_name: &str,
+        system_prompt: Option<&str>,
+        user_prompt: Option<&str>,
+        base_url: &str,
+        cache_key: String,
+    ) -> Result<String> {
+        let url = format!("{}/api/generate", base_url.trim_end_matches('/'));
+        let mut prompt = String::new();
+        if let Some(s) = system_prompt { prompt.push_str(s); prompt.push('\n'); }
+        if let Some(u) = user_prompt { prompt.push_str(u); }
+        let body = serde_json::json!({"model": model_name, "prompt": prompt, "stream": false});
+        let resp = ureq::post(&url)
+            .set("Content-Type", "application/json")
+            .send_json(body)
+            .map_err(|e| ExecutorError::LlmError(format!("Ollama HTTP error: {}", e)))?;
+        if resp.status() != 200 {
+            let status = resp.status();
+            let txt = resp.into_string().unwrap_or_default();
+            return Err(ExecutorError::LlmError(format!("Ollama API error ({}): {}", status, txt)));
+        }
+        let val: serde_json::Value = resp
+            .into_json()
+            .map_err(|e| ExecutorError::LlmError(format!("Ollama JSON parse error: {}", e)))?;
+        let out = val.get("response").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        self.cache.store(cache_key, out.clone());
+        Ok(out)
+    }
+    
     /// Real call to Anthropic API with validation
     #[allow(clippy::too_many_arguments)]
     fn call_anthropic_api(
@@ -765,12 +1458,12 @@ impl LlmAdapter {
             self.cache.store(cache_key, content.to_string());
             Ok(content.to_string())
         } else {
-            Err(ExecutorError::LlmError(
+        Err(ExecutorError::LlmError(
                 "Unexpected response format from Anthropic".into(),
-            ))
+        ))
         }
     }
-
+    
     /// Google API call (placeholder - needs implementation)
     #[allow(clippy::too_many_arguments)]
     fn call_google_api(
@@ -873,8 +1566,8 @@ impl LlmAdapter {
                         Err(ExecutorError::LlmError(msg))
                     }
                 } else {
-                    let status = resp.status();
-                    let txt = resp.into_string().unwrap_or_default();
+            let status = resp.status();
+            let txt = resp.into_string().unwrap_or_default();
                     let msg = format!("Google API error ({}): {}", status, txt);
                     span.record_error(&msg);
                     Err(ExecutorError::LlmError(msg))
@@ -899,54 +1592,54 @@ impl LlmAdapter {
         // Token counting (simulated)
         let prompt_tokens = self.count_tokens(system_prompt.unwrap_or(""))
             + self.count_tokens(user_prompt.unwrap_or(""));
-
+        
         // Build simulated response
         let mut response = String::new();
-
+        
         response.push_str(&format!("🤖 SIMULATED RESPONSE ({})\n", mode));
         response.push_str(&format!("Model: {}\n", model_name));
         response.push_str("Mode: Development/Testing\n\n");
-
+        
         if let Some(sys) = system_prompt {
             response.push_str(&format!("SYSTEM: {}\n", sys));
         }
-
+        
         if let Some(user) = user_prompt {
             response.push_str(&format!("USER: {}\n", user));
         }
-
+        
         response.push_str(
             "\nRESPONSE: This is a simulated LLM response for development and testing purposes.\n",
         );
-
+        
         // Output token counting (simulated)
         let completion_tokens = self.count_tokens(&response);
-
+        
         // Token logging
         println!("📊 Token usage (SIMULATED):");
         println!("   - Model: {} ({})", model_name, mode);
         println!("   - Prompt tokens: {}", prompt_tokens);
         println!("   - Completion tokens: {}", completion_tokens);
         println!("   - Total tokens: {}", prompt_tokens + completion_tokens);
-
+        
         // Cost estimation (simulated)
         let total_cost = (prompt_tokens + completion_tokens) as f64 * 0.00003;
         println!("💰 Estimated cost (simulated): ${:.6}", total_cost);
-
+        
         // Update counters
         self.token_count += prompt_tokens + completion_tokens;
         self.estimated_cost += total_cost;
-
+        
         // Store in cache
         self.cache.store(
             self.cache
                 .generate_key(Some(model_name), None, system_prompt, user_prompt, None),
             response.clone(),
         );
-
+        
         Ok(response)
     }
-
+    
     /// Usage information
     pub fn usage_info(&self) -> (usize, f64) {
         (self.token_count, self.estimated_cost)
@@ -964,6 +1657,7 @@ impl LlmAdapter {
         max_tokens: Option<u32>,
         attributes: &HashMap<String, String>,
     ) -> Result<String> {
+        let start = std::time::Instant::now();
         // Generate cache key and check redis/ram first
         let cache_key =
             self.cache
@@ -1007,6 +1701,14 @@ impl LlmAdapter {
         // store in local cache
         if let Ok(ref s) = res {
             self.cache.store(cache_key, s.clone());
+        }
+        if let Ok(ref out) = res {
+            let elapsed = start.elapsed().as_millis();
+            // approximate tokens using current counters (not exact per-call) → recalc
+            let tokens = self.count_tokens(system_prompt.unwrap_or("")) + self.count_tokens(user_prompt.unwrap_or("")) + self.count_tokens(out);
+            let cost = tokens as f64 * 0.00003;
+            let model_name = model.unwrap_or("auto").to_string();
+            self.llm_call_logs.push(LlmCallLog { model: model_name, elapsed_ms: elapsed, tokens, cost_usd: cost });
         }
         res
     }
@@ -1515,6 +2217,16 @@ impl Clone for LlmAdapter {
             token_count: self.token_count,
             estimated_cost: self.estimated_cost,
             api_config: self.api_config.clone(),
+            ab_variant_counts: self.ab_variant_counts.clone(),
+            provider_health: self.provider_health.clone(),
+            provider_budgets_usd: self.provider_budgets_usd.clone(),
+            provider_spent_usd: self.provider_spent_usd.clone(),
+            provider_capacity: self.provider_capacity.clone(),
+            provider_call_stats: self.provider_call_stats.clone(),
+            llm_call_logs: self.llm_call_logs.clone(),
+            custom_providers: self.custom_providers.clone(),
+            model_provider_overrides: self.model_provider_overrides.clone(),
+            last_routing_decision: self.last_routing_decision.clone(),
         }
     }
 }
@@ -1562,7 +2274,7 @@ async fn batch_processor(mut adapter: LlmAdapter) {
             let _ = req.tx.send(res);
         }
     }
-}
+} 
 // ==================== NEW STRUCTURES ADDED ====================
 
 /// Parameters for LLM calls
@@ -1694,7 +2406,7 @@ impl LlmAdapter {
 
         // Apply ensemble strategy
         let final_result = self.apply_ensemble_strategy(&results, strategy.clone())?;
-
+        
         println!(
             "✅ ask_ensemble: Combined {} responses using {:?} strategy",
             results.len(),
@@ -1780,11 +2492,11 @@ impl LlmAdapter {
 
         let mut results = Vec::new();
         let concurrent_limit = max_concurrent.unwrap_or(4);
-
+        
         // Process in batches to avoid overload
         for chunk in requests.chunks(concurrent_limit) {
             let mut batch_results = Vec::new();
-
+            
             for (prompt, model) in chunk {
                 let result = self.call_llm(
                     model.as_deref(),
@@ -1797,7 +2509,7 @@ impl LlmAdapter {
                 )?;
                 batch_results.push(result);
             }
-
+            
             results.extend(batch_results);
         }
 
@@ -1830,7 +2542,7 @@ impl LlmAdapter {
     /// Validates the current adapter configuration
     pub fn validate_adapter_config(&self) -> Result<bool> {
         println!("🔍 Validating LLM adapter configuration...");
-
+        
         // Simulate validations
         let checks = vec![
             ("API endpoints", true),
@@ -1838,7 +2550,7 @@ impl LlmAdapter {
             ("Token counting", true),
             ("Error handling", true),
         ];
-
+        
         let mut all_valid = true;
         for (component, is_valid) in &checks {
             let status = if *is_valid { "✅" } else { "❌" };
@@ -1852,7 +2564,7 @@ impl LlmAdapter {
                 all_valid = false;
             }
         }
-
+        
         Ok(all_valid)
     }
 

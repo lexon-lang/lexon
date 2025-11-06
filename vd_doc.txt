@@ -1,0 +1,1 @@
+Lexon is an LLM-first language.

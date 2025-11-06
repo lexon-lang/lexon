@@ -1,0 +1,292 @@
+name: Nightly smokes (v1.0.0-rc.1)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 02:00 UTC nightly
+  workflow_dispatch: {}
+
+jobs:
+  smokes:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable]
+    runs-on: ${{ matrix.os }}
+    env:
+      LEXON_SEED: "0"
+    defaults:
+      run:
+        working-directory: v1.0.0-rc.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Rust toolchain
+        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            v1.0.0-rc.1
+
+      - name: Build
+        run: |
+          cargo build -p lexc -p lexc-cli
+
+      - name: Run smokes
+        id: smokes
+        shell: bash
+        run: |
+          set -euo pipefail
+          TS=$(date +%s)
+          LOGDIR="/tmp/lexon_rc1_ci_${TS}"
+          mkdir -p "$LOGDIR"
+
+          SAMPLES=(
+            samples/mcp/stdio_oneshot.lx
+            samples/mcp/ws_server_oneshot.lx
+            samples/mcp/ws_ping.lx
+            samples/mcp/tool_call_read_file.lx
+            samples/mcp/tool_call_emit_file.lx
+            samples/mcp/quota.lx
+            samples/rag/eval.lx
+            samples/rag/hybrid_filters.lx
+            samples/rag/hybrid_search.lx
+            samples/sessions/main.lx
+            samples/agents/basic.lx
+            samples/agents/supervisor.lx
+            samples/validation/ask_with_validation.lx
+            samples/validation/pii_only.lx
+            samples/validation/schema_file_smoke.lx
+            samples/routing/metrics_tick_only.lx
+            samples/routing/metrics.lx
+          )
+
+          failures=0
+          for s in "${SAMPLES[@]}"; do
+            name=$(basename "$s" .lx)
+            log="$LOGDIR/${name}.log"
+            echo "[RUN] $s" | tee "$log"
+            if ! cargo run -q -p lexc-cli -- compile --run "$s" &>> "$log"; then
+              echo "[FAIL] $s" | tee -a "$log"
+              failures=$((failures+1))
+            else
+              echo "[OK] $s" | tee -a "$log"
+            fi
+          done
+
+          echo "logdir=$LOGDIR" >> "$GITHUB_OUTPUT"
+          if [[ "$failures" -ne 0 ]]; then
+            echo "One or more smokes failed ($failures). See logs." >&2
+            exit 1
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc1-smokes-logs
+          path: ${{ steps.smokes.outputs.logdir }}
+          if-no-files-found: ignore
+
+  golden:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable]
+    runs-on: ${{ matrix.os }}
+    env:
+      LEXON_SEED: "0"
+    needs: smokes
+    defaults:
+      run:
+        working-directory: v1.0.0-rc.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Rust toolchain
+        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            v1.0.0-rc.1
+
+      - name: Build
+        run: cargo build -p lexc -p lexc-cli
+
+      - name: Run golden comparisons
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A MAP
+          MAP[golden/mcp/stdio_oneshot.txt]=samples/mcp/stdio_oneshot.lx
+          MAP[golden/mcp/ws_ping.txt]=samples/mcp/ws_ping.lx
+          MAP[golden/mcp/ws_server_oneshot.txt]=samples/mcp/ws_server_oneshot.lx
+          MAP[golden/rag/hybrid_search.txt]=samples/rag/hybrid_search.lx
+          MAP[golden/sessions/main.txt]=samples/sessions/main.lx
+          MAP[golden/agents/basic.txt]=samples/agents/basic.lx
+          MAP[golden/agents/supervisor.txt]=samples/agents/supervisor.lx
+          MAP[golden/validation/ask_with_validation.txt]=samples/validation/ask_with_validation.lx
+          MAP[golden/routing/metrics.txt]=samples/routing/metrics.lx
+          MAP[golden/routing/v2_smoke.txt]=samples/routing/v2_smoke.lx
+          MAP[golden/cache/invalidate_prefix.txt]=samples/cache/invalidate_prefix.lx
+          MAP[golden/cache/dist_cache.txt]=samples/cache/dist_cache.lx
+          MAP[golden/fixtures/json_roundtrip.txt]=samples/fixtures/json_roundtrip.lx
+          MAP[golden/memory/prune_by_metadata.txt]=samples/memory/prune_by_metadata.lx
+          MAP[golden/sessions/list_delete.txt]=samples/sessions/list_delete.lx
+          MAP[golden/sessions/gc_now.txt]=samples/sessions/gc_now.lx
+          MAP[golden/streaming/multioutput.txt]=samples/streaming/multioutput.lx
+          MAP[golden/streaming/multioutput_two.txt]=samples/streaming/multioutput_two.lx
+          MAP[golden/fixtures/save_load.txt]=samples/fixtures/save_load.lx
+          MAP[golden/metrics/write_json.txt]=samples/metrics/write_json.lx
+          MAP[golden/prompts/register_render.txt]=samples/prompts/register_render.lx
+          MAP[golden/eval/bleu_rouge.txt]=samples/eval/bleu_rouge.lx
+          MAP[golden/quality/schema_gate.txt]=samples/quality/schema_gate.lx
+          MAP[golden/quality/pii_gate.txt]=samples/quality/pii_gate.lx
+          # RAG new goldens
+          MAP[golden/rag/opt_window.txt]=samples/rag/opt_window.lx
+          MAP[golden/rag/tokenize_smoke.txt]=samples/rag/tokenize_smoke.lx
+          MAP[golden/rag/rerank_cross_encoder_smoke.txt]=samples/rag/rerank_cross_encoder_smoke.lx
+          MAP[golden/rag/hybrid_page_smoke.txt]=samples/rag/hybrid_page_smoke.lx
+          MAP[golden/rag/semantic_fusion_smoke.txt]=samples/rag/semantic_fusion_smoke.lx
+          MAP[golden/rag/hybrid_llm_rerank.txt]=samples/rag/hybrid_llm_rerank.lx
+          MAP[golden/rag/hybrid_all_smoke.txt]=samples/rag/hybrid_all_smoke.lx
+          MAP[golden/rag/fusion_citations_smoke.txt]=samples/rag/fusion_citations_smoke.lx
+
+          normalize() {
+            sed -E \
+              -e 's/\x1B\[[0-9;]*[mK]//g' \
+              -e 's/^\[DEBUG\].*$//g' \
+              -e 's/^\[INFO\].*$//g' \
+              -e 's/Completed in [0-9\.]+s/Completed in <TIME>/g' \
+              -e 's/[0-9]{4}-[0-9]{2}-[0-9]{2}.*//g' \
+              -e 's/"last_checked_epoch":[0-9]+/"last_checked_epoch":<EPOCH>/g' \
+              -e 's/"next_probe_epoch":[0-9]+/"next_probe_epoch":<EPOCH>/g' \
+              -e 's/"failure_count":[0-9]+/"failure_count":<NUM>/g' \
+              -e 's/,"last_decision":\{.*\}//g' \
+              -e '/^\[ROUTING\]/d' \
+              -e 's/"bytes":[0-9]+/"bytes":<NUM>/g' \
+              -e 's/"written":[0-9]+/"written":<NUM>/g' \
+              -e 's/"total":[0-9]+/"total":<NUM>/g' \
+              -e 's/^💰 Estimated cost.*$//g' \
+              -e 's/^📊 Token usage.*$//g' \
+              -e 's/^\s+- .*tokens:.*$//g'
+          }
+
+          failures=0
+          total=0
+          for snap in "${!MAP[@]}"; do
+            sample=${MAP[$snap]}
+            out=$(mktemp)
+            total=$((total+1))
+            if [[ "$sample" == "samples/routing/v2_smoke.lx" ]]; then
+              if ! LEXON_ROUTING_POLICY=v2 LEXON_PROVIDER_CAPACITY="openai=0,anthropic=0,google=0" LEXON_PROVIDER_BUDGETS="openai=0,anthropic=0,google=0" LEXON_LLM_EST_COST_USD=0.01 cargo run -q -p lexc-cli -- compile --run "$sample" | normalize > "$out"; then
+                echo "[RUN FAIL] $sample" >&2
+                failures=$((failures+1))
+                continue
+              fi
+            else
+              if ! cargo run -q -p lexc-cli -- compile --run "$sample" | normalize > "$out"; then
+                echo "[RUN FAIL] $sample" >&2
+                failures=$((failures+1))
+                continue
+              fi
+            fi
+            if ! normalize < "$snap" | diff -u - "$out" > /tmp/diff.txt; then
+              echo "[DIFF FAIL] $sample vs $snap" >&2
+              cat /tmp/diff.txt >&2
+              failures=$((failures+1))
+            else
+              echo "[OK] $sample"
+            fi
+          done
+          passed=$((total-failures))
+          echo "Golden coverage: $passed/$total"
+          echo "{\"total\":$total,\"passed\":$passed,\"failed\":$failures}" > /tmp/golden_coverage.json
+          if [[ $failures -ne 0 ]]; then
+            echo "$failures golden mismatches" >&2
+            exit 1
+          fi
+
+      - name: Metrics thresholds
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -q -p lexc-cli -- compile --run samples/metrics/write_json.lx
+          python3 - << 'PY'
+import json,sys
+with open('samples/metrics/summary.json') as f:
+    js=json.load(f)
+calls = int(js.get('total_llm_calls', 0))
+lat_ms = int(js.get('llm_total_ms', 0))
+cost = float(js.get('total_cost_usd', 0.0)) if 'total_cost_usd' in js else 0.0
+thr_calls=50; thr_lat=60000; thr_cost=5.0
+ok = (calls<=thr_calls) and (lat_ms<=thr_lat) and (cost<=thr_cost)
+print(f"metrics: calls={calls} lat_ms={lat_ms} cost={cost} (thresholds: {thr_calls},{thr_lat},{thr_cost})")
+sys.exit(0 if ok else 2)
+PY
+
+      - name: Upload golden coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc1-golden-coverage
+          path: /tmp/golden_coverage.json
+          if-no-files-found: ignore
+
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  golden-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build core
+        run: |
+          cargo build -q -p lexc
+          cargo build -q -p lexc-cli
+      - name: Run eval harness samples
+        run: |
+          cargo run -q -p lexc-cli -- compile --run v1.0.0-rc.1/samples/rag/hybrid_search.lx || true
+          cargo run -q -p lexc-cli -- compile --run v1.0.0-rc.1/samples/sessions/summary_context.lx || true
+          cargo run -q -p lexc-cli -- compile --run v1.0.0-rc.1/samples/validation/ask_with_validation.lx || true
+          cargo run -q -p lexc-cli -- compile --run v1.0.0-rc.1/samples/agents/basic.lx || true
+          cargo run -q -p lexc-cli -- compile --run v1.0.0-rc.1/samples/mcp/stdio_oneshot.lx || true
+      - name: Save snapshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-snapshots
+          path: |
+            v1.0.0-rc.1/target/**
+
+      - name: Upload metrics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc1-metrics-artifacts
+          path: |
+            v1.0.0-rc.1/samples/metrics/*.json
+          if-no-files-found: ignore
+
+
+
+
+

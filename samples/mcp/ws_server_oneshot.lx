@@ -1,0 +1,10 @@
+// MCP WebSocket server (oneshot) sample
+let addr = get_env_or("LEXON_MCP_WS_ADDR", "127.0.0.1:8099");
+let ok = mcp.run_ws_server(addr);
+print("mcp ws server ok: " + ok);
+
+
+
+
+
+

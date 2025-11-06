@@ -1,0 +1,8 @@
+// Sessions list/delete smoke
+session__configure({ttl_ms: 0});
+let _ = session_summarize("demo_gc2");
+let l1 = sessions.list();
+print(l1);
+let _d = sessions.delete("demo_gc2");
+let l2 = sessions.list();
+print(l2);

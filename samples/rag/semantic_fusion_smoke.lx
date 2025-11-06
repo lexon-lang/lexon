@@ -1,0 +1,9 @@
+// Smoke test for rag.fuse_passages_semantic (loads a fixture)
+
+set_default_model("simulated");
+
+let arr = load_json("samples/rag/fixtures/fusion.json");
+let fused = rag__fuse_passages_semantic(arr, 2, 0.7);
+print(fused);
+
+

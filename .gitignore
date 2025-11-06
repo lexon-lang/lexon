@@ -6,3 +6,10 @@ test_data.csv
 sprint_a_*.txt
 sprint_a_*.json
 
+# Release/build artifacts to ignore
+dist/
+*.vsix
+*.tar.gz
+*.tgz
+*.zip
+

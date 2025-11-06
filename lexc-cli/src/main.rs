@@ -152,6 +152,29 @@ enum Cli {
     Compile(CompileArgs),
     Bench(BenchArgs),
     Lint(LintArgs),
+    Run(RunArgs),
+    Config(ConfigArgs),
+    New(NewArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+struct RunArgs {
+    input_file: PathBuf,
+    #[arg(long, short='v')]
+    verbose: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+struct ConfigArgs {
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+struct NewArgs {
+    dir: PathBuf,
+    #[arg(long, default_value_t = true)]
+    sample: bool,
 }
 
 fn main() {
@@ -168,6 +191,9 @@ fn main() {
         Cli::Compile(args) => compile_command(args),
         Cli::Bench(bargs) => bench_command(bargs),
         Cli::Lint(largs) => lint_command(largs),
+        Cli::Run(rargs) => run_command(rargs),
+        Cli::Config(cargs) => config_command(cargs),
+        Cli::New(nargs) => new_command(nargs),
     }
 }
 
@@ -284,10 +310,14 @@ struct LintArgs {
     /// Verbose output
     #[arg(long, short = 'v')]
     verbose: bool,
+    /// Exit non-zero if warnings are found
+    #[arg(long)]
+    strict: bool,
 }
 
 fn lint_command(largs: LintArgs) {
     let mut had_issues = false;
+    let mut had_warnings = false;
     for file in &largs.files {
         match fs::read_to_string(file) {
             Ok(source) => {
@@ -326,6 +356,7 @@ fn lint_command(largs: LintArgs) {
                     }
                 } else {
                     had_issues = true;
+                    if !res.warnings.is_empty() { had_warnings = true; }
                     for w in res.warnings {
                         match w {
                             lexlint::LintWarning::MissingAwait {
@@ -393,9 +424,80 @@ fn lint_command(largs: LintArgs) {
             }
         }
     }
-    if had_issues {
-        std::process::exit(2);
+    if largs.strict && had_warnings { std::process::exit(2); }
+    if had_issues { std::process::exit(2); }
+}
+
+fn run_command(rargs: RunArgs) {
+    let rt = TokioRuntime::new().expect("Tokio runtime");
+    let args = CompileArgs { input_file: Some(rargs.input_file), check: false, emit_json_schema: false, emit: None, run: true, optimize: false, all_opts: false, verbose: rargs.verbose, export_ir: None, load_ir: None, llm_model: None, llm_api_key: None, memory_path: None, timeout: None, async_mode: false, bench: false, allow_exec: false, workspace: None };
+    if let Err(e) = compile_flow(&args, &rt) { eprintln!("Error: {}", e); std::process::exit(1); }
+}
+
+fn config_command(cargs: ConfigArgs) {
+    // Print effective runtime/env config
+    let mut map = serde_json::Map::new();
+    map.insert("routing_policy".to_string(), serde_json::Value::String(std::env::var("LEXON_ROUTING_POLICY").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("ab_models".to_string(), serde_json::Value::String(std::env::var("LEXON_AB_MODELS").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("provider_health".to_string(), serde_json::Value::String(std::env::var("LEXON_PROVIDER_HEALTH").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("llm_retries".to_string(), serde_json::Value::String(std::env::var("LEXON_LLM_RETRIES").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("llm_backoff_ms".to_string(), serde_json::Value::String(std::env::var("LEXON_LLM_BACKOFF_MS").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("canary_model".to_string(), serde_json::Value::String(std::env::var("LEXON_CANARY_MODEL").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("canary_percent".to_string(), serde_json::Value::String(std::env::var("LEXON_CANARY_PERCENT").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("provider_budgets".to_string(), serde_json::Value::String(std::env::var("LEXON_PROVIDER_BUDGETS").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("provider_capacity".to_string(), serde_json::Value::String(std::env::var("LEXON_PROVIDER_CAPACITY").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("routing_weights".to_string(), serde_json::Value::String(std::env::var("LEXON_ROUTING_WEIGHTS").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("quality_schema_enforce".to_string(), serde_json::Value::String(std::env::var("LEXON_QUALITY_SCHEMA_ENFORCE").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("quality_pii_block".to_string(), serde_json::Value::String(std::env::var("LEXON_QUALITY_PII_BLOCK").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("vector_backend".to_string(), serde_json::Value::String(std::env::var("LEXON_VECTOR_BACKEND").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("qdrant_url".to_string(), serde_json::Value::String(std::env::var("LEXON_QDRANT_URL").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("qdrant_collection".to_string(), serde_json::Value::String(std::env::var("LEXON_QDRANT_COLLECTION").unwrap_or_else(|_| "(unset)".to_string())));
+    map.insert("qdrant_throttle_ms".to_string(), serde_json::Value::String(std::env::var("LEXON_QDRANT_THROTTLE_MS").unwrap_or_else(|_| "(unset)".to_string())));
+    if cargs.json { println!("{}", serde_json::Value::Object(map).to_string()); } else { println!("LEXON effective config:\n{}", serde_json::to_string_pretty(&serde_json::Value::Object(map)).unwrap()); }
+}
+
+fn new_command(nargs: NewArgs) {
+    let root = &nargs.dir;
+    if let Err(e) = std::fs::create_dir_all(root) { eprintln!("Error: {}", e); std::process::exit(1); }
+    let samples = root.join("samples");
+    let src = root.join("src");
+    let _ = std::fs::create_dir_all(&samples);
+    let _ = std::fs::create_dir_all(&src);
+
+    // lexon.toml
+    let toml = r#"# lexon.toml - project configuration
+[providers]
+default = "openai"
+
+[routing]
+policy = "auto"
+"#;
+    let _ = std::fs::write(root.join("lexon.toml"), toml);
+
+    // README
+    let readme = r#"# Lexon Project
+
+This is a minimal Lexon project scaffold.
+
+## Quick start
+lexc-cli run samples/00-hello-lexon.lx
+"#;
+    let _ = std::fs::write(root.join("README.md"), readme);
+
+    if nargs.sample {
+        let hello = r#"// 00-hello-lexon.lx — minimal hello
+let greeting: string = "Hello Lexon!";
+print(greeting);
+let answer: string = ask {
+  model: simulated;
+  user: "Say 'LEXON OK' exactly";
+};
+print(answer);
+"#;
+        let _ = std::fs::write(samples.join("00-hello-lexon.lx"), hello);
     }
+
+    println!("✅ Created Lexon project at {}", root.display());
 }
 
 /// Compile and optionally run; returns exec_ms if executed.

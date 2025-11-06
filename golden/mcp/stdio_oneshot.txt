@@ -1,0 +1,2 @@
+📄 Vector Memory System initialized with SQLite backend
+mcp stdio oneshot ok: 

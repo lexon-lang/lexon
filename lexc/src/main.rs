@@ -83,10 +83,51 @@ struct Cli {
     /// Run linter to detect async/await issues
     #[arg(long)]
     lint: bool,
+
+    /// Run MCP stdio server (oneshot if LEXON_MCP_ONESHOT=1)
+    #[arg(long = "mcp-stdio")]
+    mcp_stdio: bool,
+
+    /// Run MCP websocket server
+    #[arg(long = "mcp-ws")]
+    mcp_ws: bool,
+
+    /// MCP WS address (for --mcp-ws)
+    #[arg(long = "mcp-addr")]
+    mcp_addr: Option<String>,
+
+    /// Workspace (memory_path) for MCP/tool registry
+    #[arg(long = "workspace")]
+    workspace: Option<PathBuf>,
 }
 
 fn main() {
     let args = Cli::parse();
+    // MCP subcommands (no input file required)
+    if args.mcp_stdio || args.mcp_ws {
+        let mut config = ExecutorConfig {
+            memory_path: args.workspace.as_ref().map(|p| p.to_string_lossy().to_string()),
+            verbose: args.verbose,
+            llm_model: Some(args.llm_model.clone()),
+            use_new_llm_architecture: true,
+            llm_mode: Some("auto".to_string()),
+        };
+        let mut env = ExecutionEnvironment::new(config);
+        if args.mcp_stdio {
+            let _ = env.handle_mcp_run_stdio(&[], None);
+            return;
+        }
+        if args.mcp_ws {
+            let addr = args.mcp_addr.clone().map(|s| lexc::lexir::LexExpression::Value(lexc::lexir::ValueRef::Literal(lexc::lexir::LexLiteral::String(s))));
+            let args_slice: Vec<lexc::lexir::LexExpression> = if let Some(a) = addr { vec![a] } else { vec![] };
+            let rt = TokioRuntime::new().unwrap();
+            rt.block_on(async {
+                // enter runtime so server can use tokio Handle::current()
+                let _ = env.handle_mcp_run_ws_server(&args_slice, None);
+            });
+            return;
+        }
+    }
 
     // Initialize optional OpenTelemetry tracing if enabled and requested
     #[cfg(feature = "otel")]

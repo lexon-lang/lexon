@@ -208,7 +208,9 @@ impl Linter {
         // Check for blocking I/O operations in async context
         if self.current_context_is_async {
             match name {
-                "read_file" | "write_file" | "load_file" | "save_file" => {
+                "read_file" | "write_file" | "load_file" | "save_file"
+                | "load_binary_file" | "save_binary_file"
+                | "load_csv" | "save_csv" | "load_json" | "save_json" => {
                     self.warnings.push(LintWarning::BlockingIoInAsync {
                         operation: name.to_string(),
                         line: self.current_line,

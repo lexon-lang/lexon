@@ -1,0 +1,6 @@
+// File-based JSON Schema validation smoke
+let ok = data_validate_schema_file(
+  "/Users/marcosoliva/Development/lexon/v1.0.0-rc.1/samples/validation/fixtures/obj.json",
+  "/Users/marcosoliva/Development/lexon/v1.0.0-rc.1/samples/validation/fixtures/schema.json"
+);
+print(ok);

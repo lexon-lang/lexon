@@ -1,0 +1,5 @@
+// Multioutput streaming smoke
+print("[stream] multioutput start");
+let mo = ask_multioutput_stream("Generate a short note", ["a.txt"]);
+save_binary_file_stream(mo, "samples/streaming/out.txt");
+print("[stream] multioutput end");

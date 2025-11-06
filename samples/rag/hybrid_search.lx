@@ -1,0 +1,38 @@
+// RAG hybrid search + auto context + validated ask (simulated by default)
+let model = get_env_or("LEXON_MODEL", "simulated");
+set_default_model(model);
+
+// Ingest a few local docs (chunked for better recall)
+let ingested = memory_index__ingest_chunks([
+  "README.md",
+  "ROADMAP.md",
+  "blog_post.md"
+], { "by": "tokens", "size": 200, "overlap": 40 });
+print("Ingested docs: " + ingested);
+
+// Choose hybrid vs vector search via env
+let use_hybrid = get_env_or("LEXON_RAG_HYBRID", "1");
+let alpha_env = get_env_or("LEXON_RAG_ALPHA", "0.7");
+let hits = if use_hybrid == "1" {
+  memory_index.hybrid_search("Multioutput", 3, alpha_env)
+} else {
+  memory_index.search("Multioutput", 3)
+};
+print("Hybrid hits: " + hits);
+
+// Build auto context
+let ctx = auto_rag_context();
+
+// Optional global validation config
+configure_validation({
+  "min_confidence": 0.6,
+  "validation_types": ["basic","structure"],
+  "domain": null
+});
+
+// Ask with validation using context
+let q = "Explain Lexon's value proposition succinctly.\nContext:\n" + ctx;
+let validated = ask_with_validation(q, {"min_confidence": 0.6, "max_attempts": 1});
+print(validated);
+
+

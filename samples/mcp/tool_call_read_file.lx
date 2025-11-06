@@ -1,0 +1,5 @@
+// MCP tool_call sample: read a file via MCP bridge (string arg supported)
+let out = mcp.tool_call("read_file", "samples/00-hello-lexon.lx");
+print(out);
+
+

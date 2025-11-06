@@ -15,6 +15,14 @@ exclude = ["target/**/*", "*.tmp", "*.log"]
 # LLM system configuration
 [system]
 default_provider = "simulated"
+[vector]
+# backend: sqlite_local | qdrant
+backend = "sqlite_local"
+# qdrant settings (used when backend = "qdrant")
+qdrant_url = "http://127.0.0.1:6333"
+qdrant_collection = "lexon_docs"
+# qdrant_api_key is read from env LEXON_QDRANT_API_KEY if needed
+
 fallback_provider = "simulated"
 fallback_model = "simulated"
 cache_enabled = true

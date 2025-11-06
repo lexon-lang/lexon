@@ -1,0 +1,16 @@
+// Quick smoke for schema validation and PII redaction
+
+let obj = "{\"name\":\"Alice\",\"age\":30,\"email\":\"alice@example.com\"}";
+let schema = "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\"type\": \"string\"},\n    \"age\": {\"type\": \"number\"},\n    \"email\": {\"type\": \"string\"}\n  },\n  \"required\": [\"name\", \"age\"]\n}";
+
+save_file(obj, "/tmp/obj.json");
+save_file(schema, "/tmp/schema.json");
+
+let ok = data_validate_schema_file("/tmp/obj.json", "/tmp/schema.json");
+print("schema_ok=" + ok);
+
+let txt = "Contact me at alice@example.com or +34 666 777 888";
+let red = pii_redact(txt);
+print(red);
+
+

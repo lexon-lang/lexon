@@ -1,0 +1,13 @@
+// Smoke test for precise tokenization
+
+set_default_model("gpt-4o-mini");
+
+let s = "Hello Lexon precise tokenization.";
+let toks = rag__tokenize(s, "gpt-4o-mini");
+print(toks);
+let c = rag__token_count(s, "gpt-4o-mini");
+print(c);
+let chunks = rag__chunk_tokens(s, 4, 1, "gpt-4o-mini");
+print(chunks);
+
+

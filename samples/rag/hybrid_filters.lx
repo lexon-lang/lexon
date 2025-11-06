@@ -1,0 +1,13 @@
+// Demonstrate hybrid_search with metadata filters
+let ing = memory_index.ingest(["README.md","ROADMAP.md"]);
+print("ingested=" + ing);
+
+// Tag README as type=readme
+let ok = memory_index.set_metadata("README.md", "{\"type\": \"readme\"}");
+print(ok);
+
+// Search only readme docs
+let results = memory_index.hybrid_search("lexon", 3, {"alpha": 0.6, "filters": {"type": "readme"}});
+print(results);
+
+

@@ -1,0 +1,31 @@
+🔍 DEBUG ASK_PROCESSOR: Starting parse_ask_expression
+🔍 DEBUG ASK_PROCESSOR: Node structure: "(ask_expression (ask_kv_pair value: (identifier)) (ask_kv_pair value: (string_literal)))"
+🔍 DEBUG ASK_PROCESSOR: Processing child node: kind=ask_kv_pair, text=Some("model: simulated;")
+🔍 DEBUG ASK_PROCESSOR: Found ask_kv_pair node
+🔍 DEBUG ASK_PROCESSOR: ask_kv_pair key=model, value_kind=identifier
+🔍 DEBUG ASK_PROCESSOR: Adding model = simulated to attributes
+🔍 DEBUG ASK_PROCESSOR: Processing child node: kind=ask_kv_pair, text=Some("user: \"Say 'LEXON OK' exactly\";")
+🔍 DEBUG ASK_PROCESSOR: Found ask_kv_pair node
+🔍 DEBUG ASK_PROCESSOR: ask_kv_pair key=user, value_kind=string_literal
+🔍 DEBUG ASK_PROCESSOR: Final attributes: [AskAttribute { name: "model", value: Some("simulated") }]
+🔍 DEBUG HIR->LEXIR: attributes before extraction: {"model": "simulated"}
+🔍 DEBUG HIR->LEXIR: extracted model: Some("simulated"), temperature: None
+📄 Vector Memory System initialized with SQLite backend
+Hello Lexon 1.0!
+🔍 DEBUG: Executing Ask instruction
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Say 'LEXON OK' exactly")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=;user=Say 'LEXON OK' exactly;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 7
+   - Completion tokens: 48
+   - Total tokens: 55
+💰 Estimated cost (simulated): $0.001650
+🤖 SIMULATED RESPONSE (SIMULATED)
+Model: simulated
+Mode: Development/Testing
+
+USER: Say 'LEXON OK' exactly
+
+RESPONSE: This is a simulated LLM response for development and testing purposes.
+

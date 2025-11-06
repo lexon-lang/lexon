@@ -1,0 +1,9 @@
+// Channel/select! smoke
+channel__create("work", 8);
+// Send and receive
+channel__send("work", "item-1");
+let got = channel__recv("work", 1000);
+print(got);
+channel__send("work", "item-2");
+let sel = channel__select_any(["work"], 50);
+print(sel);

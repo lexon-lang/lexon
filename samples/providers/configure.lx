@@ -1,0 +1,7 @@
+// Providers configuration smoke
+let ok1 = configure_provider("huggingface", {kind: "huggingface", base_url: "https://api-inference.huggingface.co", api_key: "${HUGGINGFACE_API_KEY}"});
+let ok2 = providers__override_model("hf:distilbert-base-uncased", "huggingface");
+print(ok1);
+print(ok2);
+let r = ask("Ping HF sim", "hf:distilbert-base-uncased");
+print(r);

@@ -1,0 +1,21 @@
+# HELP lexon_llm_calls_total Total LLM calls
+# TYPE lexon_llm_calls_total counter
+lexon_llm_calls_total 0
+
+# HELP lexon_llm_latency_ms_sum Total LLM latency (ms)
+# TYPE lexon_llm_latency_ms_sum counter
+lexon_llm_latency_ms_sum 0
+
+# HELP lexon_llm_cost_usd_total Total LLM cost (USD)
+# TYPE lexon_llm_cost_usd_total counter
+lexon_llm_cost_usd_total 0
+
+# HELP lexon_provider_health Provider health (1 up, 0 down)
+# TYPE lexon_provider_health gauge
+
+# HELP lexon_tool_calls_total Tool calls
+# TYPE lexon_tool_calls_total counter
+
+# HELP lexon_errors_total Total errors
+# TYPE lexon_errors_total counter
+lexon_errors_total 0

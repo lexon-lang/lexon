@@ -1,0 +1,5 @@
+// Providers override smoke using simulated fallback
+let ok = providers__override_model("my-custom-model", "simulated");
+print(ok);
+let r = ask("Say 'OK'", "my-custom-model");
+print(r);

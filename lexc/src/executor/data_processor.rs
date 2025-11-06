@@ -9,6 +9,7 @@ use polars::prelude::BooleanChunked;
 use polars::prelude::*;
 use polars_io::json::JsonFormat;
 use polars_io::json::JsonReader;
+use polars_io::parquet::ParquetWriter;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
@@ -169,6 +170,15 @@ impl Dataset {
                     .finish(&mut df_mut)
                     .map_err(|e| ExecutorError::DataError(format!("Error writing CSV: {}", e)))?;
             }
+            "parquet" => {
+                let mut file = std::fs::File::create(path).map_err(|e| {
+                    ExecutorError::DataError(format!("Error creating file {}: {}", path, e))
+                })?;
+                let mut df_mut = df.clone();
+                ParquetWriter::new(&mut file)
+                    .finish(&mut df_mut)
+                    .map_err(|e| ExecutorError::DataError(format!("Error writing Parquet: {}", e)))?;
+            }
             "json" => {
                 // Serialize to JSON lines (NDJSON, one JSON object per line)
                 let json_rows = self.to_json_rows()?;
@@ -214,6 +224,13 @@ impl Dataset {
         }
 
         Ok(())
+    }
+
+    /// Loads a parquet file into a Dataset (lazy)
+    pub fn load_parquet(&self, name: &str, path: &str) -> Result<Dataset> {
+        let lf = LazyFrame::scan_parquet(path, Default::default())
+            .map_err(|e| ExecutorError::DataError(format!("Error scanning parquet {}: {}", path, e)))?;
+        Ok(Dataset::new(name, lf))
     }
 
     /// Validates the dataset against a provided JSON Schema.
@@ -430,6 +447,16 @@ pub struct DataStream {
     dataset: Arc<Dataset>,
     batch_size: usize,
     offset: usize,
+}
+
+// Ensure DataProcessor exposes parquet loader regardless of earlier impl placement
+impl DataProcessor {
+    /// Loads a parquet file into a Dataset (lazy)
+    pub fn load_parquet(&self, name: &str, path: &str) -> Result<Dataset> {
+        let lf = LazyFrame::scan_parquet(path, Default::default())
+            .map_err(|e| ExecutorError::DataError(format!("Error scanning parquet {}: {}", path, e)))?;
+        Ok(Dataset::new(name, lf))
+    }
 }
 
 impl Iterator for DataStream {

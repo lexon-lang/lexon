@@ -1,0 +1,7 @@
+// Set a quota for read_file and call it once
+let ok = mcp.set_quota("read_file", 1);
+print(ok);
+let out = mcp.tool_call("read_file", "samples/00-hello-lexon.lx");
+print(out);
+
+

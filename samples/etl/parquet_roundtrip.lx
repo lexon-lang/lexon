@@ -1,0 +1,6 @@
+// Parquet roundtrip smoke: CSV -> Parquet -> CSV
+let ds = data_load("samples/data/triage/tickets.csv");
+save_parquet(ds, "output/tickets.parquet");
+let ds2 = load_parquet("output/tickets.parquet");
+save_csv(ds2, "output/tickets_roundtrip.csv");
+print("parquet roundtrip OK");

@@ -1,0 +1,9 @@
+// Routing metrics smoke: A/B selection increments and provider health presence
+
+// Trigger a tiny LLM call to engage routing logic
+ask("Say 'OK'", "simulated");
+
+let m = routing.get_metrics_json();
+print(m);
+
+

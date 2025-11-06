@@ -1,0 +1,7 @@
+// Emit a small text file via MCP bridge and save it
+let mo = mcp.tool_call("emit_file", ["hello.txt", "text/plain", "SGVsbG8gTUNQIQ=="]);
+print(mo);
+let ok = mcp.tool_call("save_binary_file", ["v1.0.0-rc.1/samples/mcp/out_hello.txt", "SGVsbG8gTUNQIQ=="]);
+print(ok);
+
+

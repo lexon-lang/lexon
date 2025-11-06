@@ -112,6 +112,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        self.maybe_run_session_gc();
         let model = if !args.is_empty() {
             let model_arg = self.evaluate_expression(args[0].clone())?;
             match model_arg {
@@ -161,6 +162,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        self.maybe_run_session_gc();
         if args.len() < 2 {
             return Err(ExecutorError::ArgumentError(
                 "session_ask requires session_id and user_prompt".to_string(),
@@ -217,6 +219,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        self.maybe_run_session_gc();
         if args.is_empty() {
             return Err(ExecutorError::ArgumentError(
                 "session_history requires session_id".to_string(),
@@ -253,6 +256,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        self.maybe_run_session_gc();
         if args.is_empty() {
             return Err(ExecutorError::ArgumentError(
                 "session_summarize requires session_id".to_string(),
@@ -312,6 +316,7 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
+        self.maybe_run_session_gc();
         if args.is_empty() {
             return Err(ExecutorError::ArgumentError(
                 "session_compress requires session_id".to_string(),

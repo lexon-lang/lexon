@@ -1,0 +1,9 @@
+// Smoke test for rag.optimize_window
+
+set_default_model("simulated");
+
+let hits = memory_index.hybrid_search("Lexon", 5, "0.7");
+let sel = rag__optimize_window(hits, 300, "simulated", 100);
+print(sel);
+
+

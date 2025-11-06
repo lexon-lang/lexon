@@ -1,0 +1,12 @@
+// Hybrid search with LLM rerank sample (local backend for determinism)
+
+set_default_model("simulated");
+
+let ing = memory_index.ingest(["README.md","ROADMAP.md"]);
+print("ingested=");
+print(ing);
+
+let ranked = memory_index__hybrid_search_llm_rerank("Lexon", 3, {"alpha":0.7}, "simulated", 3);
+print(ranked);
+
+

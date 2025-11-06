@@ -1,6 +1,6 @@
-## Lexon Documentation (RC Bundle)
+## Lexon Documentation
 
-This document reflects what is implemented in this RC. Examples use only supported syntax and functions. Lexon is an LLM‑first programming language, built with extensive AI‑assisted development ("vibe coding").
+This document reflects what is implemented. Examples use only supported syntax and functions. Lexon is an LLM‑first programming language, built with extensive AI‑assisted development ("vibe coding").
 
 ### 1. Syntax (implemented)
 - Files: `.lx`. Statements end with `;`. Blocks use `{ ... }`.
@@ -116,7 +116,7 @@ Parameters supported in block forms (per grammar):
 - `ask { system|user|schema|model|temperature|max_tokens }`
 - `ask_safe { system|user|schema|model|temperature|max_tokens|validation|confidence_threshold|max_attempts|cross_reference_models|use_fact_checking }`
 
-### 16. Multioutput (Preview in RC)
+### 16. Multioutput
 
 Types:
 - `BinaryFile { name: string, mime_type: string, size: int, content: bytes }`
@@ -135,7 +135,7 @@ let meta = get_multioutput_metadata(mo);
 save_multioutput_file(mo, 0, "output/triage.csv");
 ```
 
-Runtime behavior (current RC):
+Runtime behavior:
 - `ask_multioutput(prompt: string, output_files: [string]) -> MultiOutput`.
 - Primary text is produced via the LLM adapter.
 - Binary files are generated deterministically by extension:
@@ -150,7 +150,7 @@ Runtime behavior (current RC):
   - `load_binary_file(path: string, name?) -> BinaryFile`
   - `save_binary_file(BinaryFile, path: string) -> void`
 
-Notes (RC limitations):
+Notes:
 - Arguments are validated (types/arity). Errors are surfaced as runtime errors.
 - All file I/O honors CLI sandbox flags.
 - Real binaries (opt‑in): set environment variable `LEXON_REAL_BINARIES=1` to use the LLM response as payload for text-like outputs (JSON wraps `{ text: ... }`, CSV emits a small summary row). Default is deterministic stubs.
@@ -158,7 +158,7 @@ Notes (RC limitations):
 - Pseudo‑streaming (opt‑in): set `LEXON_STREAM_TEXT=1` to print primary_text lines as they are available (stdout only; no incremental API yet).
 - Not GA yet: incremental streaming API; non text‑like binary generation; per‑file advanced metadata; progress callbacks; strict per‑file size limits.
 
-Error cases (current RC):
+Error cases:
 - Wrong arity or types for `ask_multioutput` → `ArgumentError`.
 - Non‑array `output_files` or non‑string elements → `ArgumentError`.
 - `save_multioutput_file` wrong index/path types → `ArgumentError`.
@@ -341,6 +341,16 @@ Signatures:
 - `memory_index.vector_search(query: string, k: int) -> array`
 - `auto_rag_context() -> string`
 
+Backends:
+- Default local backend uses SQLite for metadata/embeddings persistence with in-process cosine similarity.
+- You can select an external vector store via environment: `LEXON_VECTOR_BACKEND=sqlite_local|qdrant`.
+  - Qdrant settings: `LEXON_QDRANT_URL`, `LEXON_QDRANT_COLLECTION`, `LEXON_QDRANT_API_KEY`.
+  - When Qdrant is selected, ingest (including `ingest_chunks`) and `vector_search` use Qdrant HTTP API.
+
+Chunked ingest:
+- `memory_index.ingest_chunks(paths: string | [string], options_json?) -> int`
+  - Options: `{ by: "tokens"|"chars"|"paragraphs", size: int, overlap: int }` (defaults: tokens/200/40)
+
 Notes:
 - Ingest accepts CSV/JSON/NDJSON/text; builds a lightweight vector index.
 - `vector_search` returns top‑k matches with simple cosine similarity.
@@ -371,17 +381,31 @@ Signatures:
 Example:
 ```lexon
 let arr = [1,2,3];
-// String predicate/transform expressions are supported in this RC
+// String predicate/transform expressions are supported
 let doubled = map(arr, 'x * 2');
 let evens = filter(arr, 'x % 2 == 0');
 let total = reduce(arr, 0, 'acc + x');
 ```
 
 Notes:
-- Predicates and callbacks use string expressions in this RC (e.g., `'x % 2 == 0'`).
+- Predicates and callbacks use string expressions (e.g., `'x % 2 == 0'`).
 - Advanced pipelines can be built by chaining `map`, `filter`, `reduce`, etc.
 
 ### 31. Error taxonomy
+### 32. RAG utilities
+
+Functions:
+- `rag.tokenize(text: string, model?: string) -> [string]`
+- `rag.token_count(text: string, model?: string) -> int`
+- `rag.chunk_tokens(text: string, size: int, overlap?: int, model?: string) -> [string]`
+- `rag.rerank(results_json: array, query: string) -> array` (sort by score or textual match)
+- `rag.fuse_passages(results_json: array, max?: int) -> string` (concatenate top passages)
+- `rag.summarize_chunks(chunks_json: array, model?: string) -> string` (LLM-based synthesis)
+
+Notes:
+- Tokenization is whitespace-based by default; model-aware tokenization hooks are planned.
+- `ingest_chunks` chunker supports `by: tokens|chars|paragraphs` for flexible pipelines.
+
 
 The executor returns structured errors surfaced as runtime failures:
 - `ArgumentError` — wrong arity/type or invalid argument values.

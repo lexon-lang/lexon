@@ -1,0 +1,14 @@
+📄 Vector Memory System initialized with SQLite backend
+📊 Loading data from: samples/data/triage/tickets.csv
+   Loaded 6 rows with 4 columns
+💾 save_parquet: Saving data to 'output/tickets.parquet'
+✅ save_parquet: Parquet saved successfully
+📦 load_parquet: Loading Parquet file 'output/tickets.parquet'
+📊 Loading data from: output/tickets.parquet
+   Loaded 6 rows with 4 columns
+✅ load_parquet: Parquet loaded successfully
+💾 save_csv: Saving data to 'output/tickets_roundtrip.csv'
+[DEBUG] [data_operation] EVENT: Saving CSV
+✅ save_csv: Data saved successfully
+[DEBUG] [data_operation] COMPLETED in 957.834µs
+parquet roundtrip OK

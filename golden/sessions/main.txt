@@ -1,0 +1,47 @@
+📄 Vector Memory System initialized with SQLite backend
+🛠️ on_tool_call: read_file
+📁 read_file: Reading file 'samples/sessions/conversation.json'
+🛠️ on_tool_call: read_file
+✅ read_file: Successfully read 160 bytes from 'samples/sessions/conversation.json'
+✅ on_tool_success: read_file
+[DEBUG] [data_operation] COMPLETED in 279.875µs
+🔗 session_start: Creating session 'session_1761722093' with model demo_session_001
+💬 session_ask: Session 'demo_session_001' - User: Hello, can you describe Lexon briefly?
+🔍 DEBUG call_llm: model=Some("gpt-3.5-turbo"), user_prompt=Some("Hello, can you describe Lexon briefly?")
+🔍 DEBUG: Checking cache for key: "model=gpt-3.5-turbo;temp=0.7;sys=You are in session 'demo_session_001'. Maintain conversation context.;user=Hello, can you describe Lexon briefly?;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 2.40884425s
+💬 session_ask: Session 'demo_session_001' - User: What features are unique?
+🔍 DEBUG call_llm: model=Some("gpt-3.5-turbo"), user_prompt=Some("What features are unique?")
+🔍 DEBUG: Checking cache for key: "model=gpt-3.5-turbo;temp=0.7;sys=You are in session 'demo_session_001'. Maintain conversation context.;user=What features are unique?;schema="
+[INFO] [llm_call] EVENT: Calling OpenAI API
+[INFO] [llm_call] EVENT: OpenAI call successful
+[INFO] [llm_call] COMPLETED in 733.011ms
+📚 session_history: Retrieving history for session 'demo_session_001'
+🧠 session_summarize: Generating intelligent summary for session 'demo_session_001'
+🔍 DEBUG call_llm: model=None, user_prompt=Some("Please summarize this conversation session:\n\nDemo conversation for session demo_session_001\nUser: Hello, I'm testing the Lexon language features.\nAssistant: Great! Lexon is a revolutionary LLM-native programming language.\nUser: Can you explain the key features?\nAssistant: Lexon supports async/await, multimodal requests, session management, and anti-hallucination validation.\nUser: That sounds impressive. How does the session system work?\nAssistant: Sessions allow persistent context across multiple interactions, with automatic summarization and compression.\nUser: Perfect, let's test the context window management now.\n\nSummary requirements:\n- Length: medium\n- Focus: comprehensive\n- Style: professional\n\nProvide a comprehensive yet concise summary that captures the key points, decisions, and outcomes.")
+⚠️  No default model configured, using fallback
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=You are an expert session summarizer. Create a medium summary with comprehensive focus in a professional style.;user=Please summarize this conversation session:\n\nDemo conversation for session demo_session_001\nUser: Hello, I'm testing the Lexon language features.\nAssistant: Great! Lexon is a revolutionary LLM-native programming language.\nUser: Can you explain the key features?\nAssistant: Lexon supports async/await, multimodal requests, session management, and anti-hallucination validation.\nUser: That sounds impressive. How does the session system work?\nAssistant: Sessions allow persistent context across multiple interactions, with automatic summarization and compression.\nUser: Perfect, let's test the context window management now.\n\nSummary requirements:\n- Length: medium\n- Focus: comprehensive\n- Style: professional\n\nProvide a comprehensive yet concise summary that captures the key points, decisions, and outcomes.;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 230
+   - Completion tokens: 275
+   - Total tokens: 505
+💰 Estimated cost (simulated): $0.015150
+✅ session_summarize: Generated summary (1096 chars)
+🛠️ on_tool_call: write_file
+📝 write_file: Writing to file 'samples/sessions/session_history.json'
+🛠️ on_tool_call: write_file
+✅ write_file: Successfully wrote to 'samples/sessions/session_history.json'
+✅ on_tool_success: write_file
+[DEBUG] [data_operation] COMPLETED in 1.321208ms
+✅ on_tool_success: write_file
+🛠️ on_tool_call: write_file
+📝 write_file: Writing to file 'samples/sessions/session_summary.md'
+🛠️ on_tool_call: write_file
+✅ write_file: Successfully wrote to 'samples/sessions/session_summary.md'
+✅ on_tool_success: write_file
+[DEBUG] [data_operation] COMPLETED in 289.625µs
+✅ on_tool_success: write_file
+Session demo done.

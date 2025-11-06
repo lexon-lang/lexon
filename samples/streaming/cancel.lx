@@ -1,0 +1,6 @@
+// Cancellation smoke for streaming save
+print("[cancel] start");
+let mo = ask_multioutput_stream("Generate a long content block", ["big.txt"]);
+cancel_current();
+save_binary_file_stream(mo, "samples/streaming/cancel_out.txt");
+print("[cancel] end");

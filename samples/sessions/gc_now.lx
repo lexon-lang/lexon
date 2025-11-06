@@ -1,0 +1,8 @@
+// Sessions GC now smoke: set TTL=0, create demo session via summarize, run GC, check exists=false
+session__configure({ttl_ms: 0, gc_interval_ms: 1});
+let _ = session_summarize("demo_gc");
+let _g = sessions.gc_now();
+let ex = session.exists("demo_gc");
+print(ex);
+
+

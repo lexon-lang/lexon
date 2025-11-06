@@ -1,0 +1,9 @@
+// Smoke for batched cross-encoder rerank using fixture
+
+set_default_model("simulated");
+
+let arr = load_json("samples/rag/fixtures/opt_window_results.json");
+let ranked = rag__rerank_cross_encoder(arr, "Lexon orchestration and RAG", "simulated", 3, 4);
+print(ranked);
+
+

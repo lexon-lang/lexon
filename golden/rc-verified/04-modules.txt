@@ -1,0 +1,23 @@
+🔍 DEBUG ASK_PROCESSOR: Starting parse_ask_expression
+🔍 DEBUG ASK_PROCESSOR: Node structure: "(ask_expression prompt: (string_literal))"
+🔍 DEBUG ASK_PROCESSOR: Function syntax detected, user_prompt: Some("rc-verified")
+🔍 DEBUG HIR->LEXIR: attributes before extraction: {}
+🔍 DEBUG HIR->LEXIR: extracted model: None, temperature: None
+📄 Vector Memory System initialized with SQLite backend
+🔍 DEBUG: Executing Ask instruction
+🔍 DEBUG call_llm: model=None, user_prompt=Some("rc-verified")
+⚠️  No default model configured, using fallback
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=;user=rc-verified;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 4
+   - Completion tokens: 46
+   - Total tokens: 50
+💰 Estimated cost (simulated): $0.001500
+🛠️ on_tool_call: write_file
+📝 write_file: Writing to file 'samples/rc-verified/out/modules.txt'
+🛠️ on_tool_call: write_file
+✅ write_file: Successfully wrote to 'samples/rc-verified/out/modules.txt'
+✅ on_tool_success: write_file
+[DEBUG] [data_operation] COMPLETED in 189.583µs
+✅ on_tool_success: write_file

@@ -1,0 +1,50 @@
+📄 Vector Memory System initialized with SQLite backend
+DEBUG EXECUTOR: Loaded 0 functions: []
+🔧 set_default_model: Setting default model to 'simulated'
+🔧 LlmAdapter: Setting default model to 'simulated'
+✅ set_default_model: Default model updated successfully
+📥 load_json: Loading JSON file 'samples/rag/fixtures/opt_window_results.json'
+[DEBUG] [data_operation] EVENT: Reading JSON
+✅ load_json: JSON loaded successfully
+[DEBUG] [data_operation] COMPLETED in 367.208µs
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Lexon provides a DSL for LLM orchestration.\"\nScore relevance 0..1 as 'score: <number>'")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise cross-encoder that outputs only: score: <number between 0 and 1>;user=[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Lexon provides a DSL for LLM orchestration.\"\nScore relevance 0..1 as 'score: <number>';schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 59
+   - Completion tokens: 103
+   - Total tokens: 162
+💰 Estimated cost (simulated): $0.004860
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Hybrid search blends vector and keyword signals.\"\nScore relevance 0..1 as 'score: <number>'")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise cross-encoder that outputs only: score: <number between 0 and 1>;user=[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Hybrid search blends vector and keyword signals.\"\nScore relevance 0..1 as 'score: <number>';schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 60
+   - Completion tokens: 104
+   - Total tokens: 164
+💰 Estimated cost (simulated): $0.004920
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Agent orchestration supports budgets and deadlines.\"\nScore relevance 0..1 as 'score: <number>'")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise cross-encoder that outputs only: score: <number between 0 and 1>;user=[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Agent orchestration supports budgets and deadlines.\"\nScore relevance 0..1 as 'score: <number>';schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 61
+   - Completion tokens: 105
+   - Total tokens: 166
+💰 Estimated cost (simulated): $0.004980
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Irrelevant: cooking recipes and ingredients.\"\nScore relevance 0..1 as 'score: <number>'")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise cross-encoder that outputs only: score: <number between 0 and 1>;user=[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Irrelevant: cooking recipes and ingredients.\"\nScore relevance 0..1 as 'score: <number>';schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 59
+   - Completion tokens: 103
+   - Total tokens: 162
+💰 Estimated cost (simulated): $0.004860
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Sessions persist context with TTL and GC.\"\nScore relevance 0..1 as 'score: <number>'")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0;sys=You are a precise cross-encoder that outputs only: score: <number between 0 and 1>;user=[CROSS-ENCODER]\nQuery: \"Lexon orchestration and RAG\"\nPassage: \"Sessions persist context with TTL and GC.\"\nScore relevance 0..1 as 'score: <number>';schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 58
+   - Completion tokens: 102
+   - Total tokens: 160
+💰 Estimated cost (simulated): $0.004800
+[{"content":"Lexon provides a DSL for LLM orchestration.","hybrid_score":0.92},{"content":"Hybrid search blends vector and keyword signals.","hybrid_score":0.88},{"content":"Agent orchestration supports budgets and deadlines.","hybrid_score":0.76}]

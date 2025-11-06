@@ -1,0 +1,47 @@
+📄 Vector Memory System initialized with SQLite backend
+🔧 set_default_model: Setting default model to 'simulated'
+🔧 LlmAdapter: Setting default model to 'simulated'
+✅ set_default_model: Default model updated successfully
+🧠 memory_index.ingest: Ingesting 3 paths into vector memory index
+📄 Ingested: README.md [chunk 1/9] (doc_id: 1, dim: 128)
+📄 Ingested: README.md [chunk 2/9] (doc_id: 2, dim: 128)
+📄 Ingested: README.md [chunk 3/9] (doc_id: 3, dim: 128)
+📄 Ingested: README.md [chunk 4/9] (doc_id: 4, dim: 128)
+📄 Ingested: README.md [chunk 5/9] (doc_id: 5, dim: 128)
+📄 Ingested: README.md [chunk 6/9] (doc_id: 6, dim: 128)
+📄 Ingested: README.md [chunk 7/9] (doc_id: 7, dim: 128)
+📄 Ingested: README.md [chunk 8/9] (doc_id: 8, dim: 128)
+📄 Ingested: README.md [chunk 9/9] (doc_id: 9, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 1/7] (doc_id: 10, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 2/7] (doc_id: 11, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 3/7] (doc_id: 12, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 4/7] (doc_id: 13, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 5/7] (doc_id: 14, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 6/7] (doc_id: 15, dim: 128)
+📄 Ingested: ROADMAP.md [chunk 7/7] (doc_id: 16, dim: 128)
+📄 Ingested: blog_post.md [chunk 1/3] (doc_id: 17, dim: 128)
+📄 Ingested: blog_post.md [chunk 2/3] (doc_id: 18, dim: 128)
+📄 Ingested: blog_post.md [chunk 3/3] (doc_id: 19, dim: 128)
+✅ memory_index.ingest: Successfully ingested 19 documents
+Ingested docs: 
+Hybrid hits: 
+🧠 auto_rag_context: Generating automatic RAG context
+✅ auto_rag_context: Generated context (739 chars)
+🛡️ ask_with_validation: min_conf=0.75, types=["basic"], domain=None, models=simulated, attempts=2
+🔄 attempt 1 with model simulated
+🔍 DEBUG call_llm: model=Some("simulated"), user_prompt=Some("Explain Lexon's value proposition succinctly.\\nContext:\\n")
+🔍 DEBUG: Checking cache for key: "model=simulated;temp=0.3;sys=;user=Explain Lexon's value proposition succinctly.\\nContext:\\n;schema="
+📊 Token usage (SIMULATED):
+   - Model: simulated (SIMULATED)
+   - Prompt tokens: 16
+   - Completion tokens: 57
+   - Total tokens: 73
+💰 Estimated cost (simulated): $0.002190
+Ok(🤖 SIMULATED RESPONSE (SIMULATED)
+Model: simulated
+Mode: Development/Testing
+
+USER: Explain Lexon's value proposition succinctly.\nContext:\n
+
+RESPONSE: This is a simulated LLM response for development and testing purposes.
+)
