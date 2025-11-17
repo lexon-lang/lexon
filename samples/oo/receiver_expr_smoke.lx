@@ -1,0 +1,2 @@
+trait GreeterX { greet(name: string) -> string; }
+impl GreeterX { fn greet(self, n: string) -> string { Hello,

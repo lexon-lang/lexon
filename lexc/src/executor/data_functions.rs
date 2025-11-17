@@ -37,6 +37,9 @@ impl ExecutionEnvironment {
             }
         };
 
+        if path.starts_with("http://") || path.starts_with("https://") {
+            return self.handle_load_csv_url(args, result);
+        }
         println!("📊 load_csv: Loading CSV file '{}'", path);
         let _span = trace_data_operation("load_csv", 0);
         _span.record_event("Reading CSV");
@@ -47,6 +50,81 @@ impl ExecutionEnvironment {
 
         println!("✅ load_csv: CSV loaded successfully");
 
+        if let Some(res) = result {
+            self.store_value(res, RuntimeValue::Dataset(Arc::new(dataset)))?;
+        }
+        Ok(())
+    }
+
+    /// Handle load_csv_url(url) -> Dataset (download and parse)
+    pub fn handle_load_csv_url(
+        &mut self,
+        args: &[LexExpression],
+        result: Option<&ValueRef>,
+    ) -> Result<(), ExecutorError> {
+        if args.len() != 1 {
+            return Err(ExecutorError::ArgumentError(
+                "load_csv_url requires url".to_string(),
+            ));
+        }
+        let url = match self.evaluate_expression(args[0].clone())? {
+            RuntimeValue::String(s) => s,
+            _ => {
+                return Err(ExecutorError::ArgumentError(
+                    "url must be string".to_string(),
+                ))
+            }
+        };
+        if std::env::var("LEXON_ALLOW_HTTP").ok().as_deref() != Some("1") {
+            return Err(ExecutorError::RuntimeError(
+                "HTTP disabled: set LEXON_ALLOW_HTTP=1".to_string(),
+            ));
+        }
+        let timeout_ms: u64 = std::env::var("LEXON_HTTP_TIMEOUT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5000);
+        let retries: u32 = std::env::var("LEXON_HTTP_RETRIES")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_millis(timeout_ms))
+            .build();
+        let mut last_err: Option<String> = None;
+        let mut text: Option<String> = None;
+        for _ in 0..=retries {
+            match agent.get(&url).call() {
+                Ok(resp) => match resp.into_string() {
+                    Ok(s) => {
+                        text = Some(s);
+                        break;
+                    }
+                    Err(e) => {
+                        last_err = Some(format!("load_csv_url read: {}", e));
+                    }
+                },
+                Err(e) => {
+                    last_err = Some(format!("load_csv_url: {}", e));
+                }
+            }
+        }
+        let text = text.ok_or_else(|| {
+            ExecutorError::RuntimeError(last_err.unwrap_or_else(|| "HTTP error".to_string()))
+        })?;
+        let tmpdir = std::env::temp_dir();
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let fname = format!("lexon_csv_{}.csv", ts);
+        let path = tmpdir.join(fname);
+        std::fs::write(&path, &text)
+            .map_err(|e| ExecutorError::RuntimeError(format!("tmp write: {}", e)))?;
+        let dataset = self.data_processor.load_data(
+            path.to_str().unwrap_or("/tmp/lexon.csv"),
+            &std::collections::HashMap::new(),
+        )?;
         if let Some(res) = result {
             self.store_value(res, RuntimeValue::Dataset(Arc::new(dataset)))?;
         }
@@ -192,6 +270,9 @@ impl ExecutionEnvironment {
             }
         };
 
+        if path.starts_with("http://") || path.starts_with("https://") {
+            return self.handle_load_json_url(args, result);
+        }
         println!("📥 load_json: Loading JSON file '{}'", path);
         let _span = trace_data_operation("load_json", 0);
         _span.record_event("Reading JSON");
@@ -204,6 +285,70 @@ impl ExecutionEnvironment {
             self.store_value(res, RuntimeValue::Json(json_value))?;
         }
         println!("✅ load_json: JSON loaded successfully");
+        Ok(())
+    }
+
+    /// Handle load_json_url(url) -> Json
+    pub fn handle_load_json_url(
+        &mut self,
+        args: &[LexExpression],
+        result: Option<&ValueRef>,
+    ) -> Result<(), ExecutorError> {
+        if args.len() != 1 {
+            return Err(ExecutorError::ArgumentError(
+                "load_json_url requires url".to_string(),
+            ));
+        }
+        let url = match self.evaluate_expression(args[0].clone())? {
+            RuntimeValue::String(s) => s,
+            _ => {
+                return Err(ExecutorError::ArgumentError(
+                    "url must be string".to_string(),
+                ))
+            }
+        };
+        if std::env::var("LEXON_ALLOW_HTTP").ok().as_deref() != Some("1") {
+            return Err(ExecutorError::RuntimeError(
+                "HTTP disabled: set LEXON_ALLOW_HTTP=1".to_string(),
+            ));
+        }
+        let timeout_ms: u64 = std::env::var("LEXON_HTTP_TIMEOUT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5000);
+        let retries: u32 = std::env::var("LEXON_HTTP_RETRIES")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_millis(timeout_ms))
+            .build();
+        let mut last_err: Option<String> = None;
+        let mut text: Option<String> = None;
+        for _ in 0..=retries {
+            match agent.get(&url).call() {
+                Ok(resp) => match resp.into_string() {
+                    Ok(s) => {
+                        text = Some(s);
+                        break;
+                    }
+                    Err(e) => {
+                        last_err = Some(format!("load_json_url read: {}", e));
+                    }
+                },
+                Err(e) => {
+                    last_err = Some(format!("load_json_url: {}", e));
+                }
+            }
+        }
+        let text = text.ok_or_else(|| {
+            ExecutorError::RuntimeError(last_err.unwrap_or_else(|| "HTTP error".to_string()))
+        })?;
+        let json_value: serde_json::Value =
+            serde_json::from_str(&text).unwrap_or(serde_json::json!({"raw": text}));
+        if let Some(res) = result {
+            self.store_value(res, RuntimeValue::Json(json_value))?;
+        }
         Ok(())
     }
 
@@ -487,7 +632,12 @@ impl ExecutionEnvironment {
         };
 
         let content = match content_value {
-            RuntimeValue::String(s) => s,
+            RuntimeValue::String(s) => {
+                // Unescape basic sequences so "\n" becomes a real newline in files
+                s.replace("\\n", "\n")
+                    .replace("\\r", "\r")
+                    .replace("\\t", "\t")
+            }
             RuntimeValue::Json(json) => json.to_string(),
             _ => format!("{:?}", content_value),
         };
@@ -495,7 +645,10 @@ impl ExecutionEnvironment {
         println!("📝 write_file: Writing to file '{}'", path);
         let _span = trace_data_operation("write_file", content.len());
         match std::fs::write(&path, content) {
-            Ok(_) => { println!("✅ write_file: Successfully wrote to '{}'", path); self.after_tool_event("write_file", true, None); }
+            Ok(_) => {
+                println!("✅ write_file: Successfully wrote to '{}'", path);
+                self.after_tool_event("write_file", true, None);
+            }
             Err(e) => {
                 let error_msg = format!("Failed to write file '{}': {}", path, e);
                 println!("❌ write_file: {}", error_msg);
@@ -532,15 +685,23 @@ impl ExecutionEnvironment {
         };
 
         let content = match content_value {
-            RuntimeValue::String(s) => s,
+            RuntimeValue::String(s) => {
+                // Convert common escaped sequences to real characters for text files
+                s.replace("\\n", "\n")
+                    .replace("\\r", "\r")
+                    .replace("\\t", "\t")
+            }
             RuntimeValue::Json(json) => json.to_string(),
-            _ => format!("{:?}", content_value),
+            other => super::super::executor::format_runtime_value(&other),
         };
 
         println!("💾 save_file: Writing to file '{}'", path);
         let _span = trace_data_operation("save_file", content.len());
         match std::fs::write(&path, content) {
-            Ok(_) => { println!("✅ save_file: Successfully wrote to '{}'", path); self.after_tool_event("save_file", true, None); }
+            Ok(_) => {
+                println!("✅ save_file: Successfully wrote to '{}'", path);
+                self.after_tool_event("save_file", true, None);
+            }
             Err(e) => {
                 let error_msg = format!("Failed to write file '{}': {}", path, e);
                 println!("❌ save_file: {}", error_msg);
@@ -583,27 +744,52 @@ impl ExecutionEnvironment {
                     ));
                 }
                 // Limits
-                let max_bytes: usize = std::env::var("LEXON_MULTI_MAX_FILE_BYTES").ok().and_then(|v| v.parse().ok()).unwrap_or(10 * 1024 * 1024);
+                let max_bytes: usize = std::env::var("LEXON_MULTI_MAX_FILE_BYTES")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(10 * 1024 * 1024);
                 let file = &binary_files[0];
                 if file.size > max_bytes {
-                    return Err(ExecutorError::RuntimeError(format!("File exceeds limit: {} bytes > {}", file.size, max_bytes)));
+                    return Err(ExecutorError::RuntimeError(format!(
+                        "File exceeds limit: {} bytes > {}",
+                        file.size, max_bytes
+                    )));
                 }
                 // Progress start
-                println!("📦 save_binary_file: 1/1 starting '{}' ({} bytes)", file.name, file.size);
+                println!(
+                    "📦 save_binary_file: 1/1 starting '{}' ({} bytes)",
+                    file.name, file.size
+                );
                 self.after_tool_event("multioutput.save_progress", true, None);
                 // Retry with basic backoff
                 let mut attempts = 0u32;
-                let max_attempts: u32 = std::env::var("LEXON_MULTI_SAVE_RETRIES").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
-                let backoff_ms: u64 = std::env::var("LEXON_MULTI_SAVE_BACKOFF_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(100);
+                let max_attempts: u32 = std::env::var("LEXON_MULTI_SAVE_RETRIES")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0);
+                let backoff_ms: u64 = std::env::var("LEXON_MULTI_SAVE_BACKOFF_MS")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(100);
                 loop {
                     match self.save_binary_file(file, &path) {
-                        Ok(_) => { println!("✅ save_binary_file: completed '{}'", file.name); self.after_tool_event("multioutput.save_progress", true, None); break },
+                        Ok(_) => {
+                            println!("✅ save_binary_file: completed '{}'", file.name);
+                            self.after_tool_event("multioutput.save_progress", true, None);
+                            break;
+                        }
                         Err(e) => {
-                            if attempts >= max_attempts { return Err(e); }
+                            if attempts >= max_attempts {
+                                return Err(e);
+                            }
                             attempts += 1;
                             std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
                             println!("↻ save_binary_file: retry {} for '{}'", attempts, file.name);
-                            self.after_tool_event("multioutput.save_progress", false, Some("retry"));
+                            self.after_tool_event(
+                                "multioutput.save_progress",
+                                false,
+                                Some("retry"),
+                            );
                             continue;
                         }
                     }
@@ -675,31 +861,56 @@ impl ExecutionEnvironment {
     ) -> Result<(), ExecutorError> {
         if args.len() != 2 {
             return Err(ExecutorError::ArgumentError(
-                "save_binary_file_stream requires exactly 2 arguments: binary_file and path".to_string(),
+                "save_binary_file_stream requires exactly 2 arguments: binary_file and path"
+                    .to_string(),
             ));
         }
         let file_value = self.evaluate_expression(args[0].clone())?;
         let path_value = self.evaluate_expression(args[1].clone())?;
-        let path = match path_value { RuntimeValue::String(s)=>s, _=> return Err(ExecutorError::ArgumentError("path must be string".to_string())) };
+        let path = match path_value {
+            RuntimeValue::String(s) => s,
+            _ => {
+                return Err(ExecutorError::ArgumentError(
+                    "path must be string".to_string(),
+                ))
+            }
+        };
         match file_value {
             RuntimeValue::MultiOutput { binary_files, .. } => {
-                if binary_files.is_empty() { return Err(ExecutorError::ArgumentError("No binary files found in MultiOutput".to_string())); }
+                if binary_files.is_empty() {
+                    return Err(ExecutorError::ArgumentError(
+                        "No binary files found in MultiOutput".to_string(),
+                    ));
+                }
                 let file = &binary_files[0];
-                let chunk_bytes: usize = std::env::var("LEXON_MULTI_CHUNK_BYTES").ok().and_then(|v| v.parse().ok()).unwrap_or(64 * 1024);
-                let mut f = std::fs::File::create(&path).map_err(|e| ExecutorError::RuntimeError(format!("open '{}': {}", path, e)))?;
+                let chunk_bytes: usize = std::env::var("LEXON_MULTI_CHUNK_BYTES")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(64 * 1024);
+                let mut f = std::fs::File::create(&path)
+                    .map_err(|e| ExecutorError::RuntimeError(format!("open '{}': {}", path, e)))?;
                 let mut written: usize = 0;
                 while written < file.size {
-                    if self.cancel_requested { return Err(ExecutorError::RuntimeError("cancelled".to_string())); }
+                    if self.cancel_requested {
+                        return Err(ExecutorError::RuntimeError("cancelled".to_string()));
+                    }
                     let end = (written + chunk_bytes).min(file.size);
                     let slice = &file.content[written..end];
-                    f.write_all(slice).map_err(|e| ExecutorError::RuntimeError(format!("write '{}': {}", path, e)))?;
+                    f.write_all(slice).map_err(|e| {
+                        ExecutorError::RuntimeError(format!("write '{}': {}", path, e))
+                    })?;
                     written = end;
                     println!("STREAM_EVENT {{\"type\":\"file_write\",\"path\":{:?},\"written\":{},\"total\":{}}}", path, written, file.size);
                 }
-                println!("STREAM_EVENT {{\"type\":\"file_write_done\",\"path\":{:?},\"bytes\":{}}}", path, written);
+                println!(
+                    "STREAM_EVENT {{\"type\":\"file_write_done\",\"path\":{:?},\"bytes\":{}}}",
+                    path, written
+                );
                 Ok(())
             }
-            _ => Err(ExecutorError::ArgumentError("save_binary_file_stream requires a MultiOutput with binary files".to_string())),
+            _ => Err(ExecutorError::ArgumentError(
+                "save_binary_file_stream requires a MultiOutput with binary files".to_string(),
+            )),
         }
     }
 }

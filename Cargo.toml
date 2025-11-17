@@ -3,7 +3,8 @@ resolver = "2"
 members = [
     "lexc",
     "lexc-cli",
-    "crates/lexon-py"
+    "crates/lexon-py",
+    "fuzz"
 ]
 
 [workspace.metadata.cargo-deny-warnings]

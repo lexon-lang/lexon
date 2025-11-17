@@ -1,0 +1,6 @@
+module samples.oo;
+
+trait GreeterY { greet(name: string) -> string; }
+impl GreeterY { fn greet(self, n: string) -> string { "Hello, " + n } }
+let greeter = struct.new("GreeterY", "{}");
+assert_snapshot("receiver_expr", (greeter).greet("Bob"));

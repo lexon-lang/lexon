@@ -25,9 +25,25 @@ This roadmap reflects the v1.0.0-rc.1 scope and the current, implemented reality
 - Telemetry dashboards: enrich model/provider breakdowns, error stratification, budget/quality overlays.
 - Provider expansion & rerank: optional adapters (Azure OpenAI/Bedrock) and external cross‑encoder endpoints.
 - DX & Samples: VS Code LSP enrichments, more end‑to‑end samples; optional REPL.
+- AOT packaging (embedder first: LexIR + VM as single binary).
+- IR optimizer (const‑fold, DCE, selective inline) and robust string‑concat lowering.
+- Fuzzing nightly for parser/HIR/IR with minimal corpus and crash triage.
+- Web search presets and stable goldens per provider (normalized `/Results`).
 
-### Notes
-- CI runs with deterministic seeds and normalization; real providers are opt‑in for reproducibility.
-- See `golden/rag/*` for RAG coverage (tokenize, optimize_window, rerank, fusion, pagination, llm_rerank), and `samples/apps/research_analyst` for a comprehensive demo.
+### Planned enhancements (prioritized)
+- Language/IR robustness: explicit coercion rules, predictable truthiness, support for safe top‑level expressions, improved lowering for concatenations (recommend `strings.join`).
+- Types and data modeling: lightweight ADTs (Option/Result), better branch type unification, pattern matching, first‑class generics (scoped), JSON path contracts.
+- Modules and packaging: package manager (index + lockfile), workspace support, semantic versioning, clearer module roots.
+- Stdlib and I/O: regex captures/groups, richer time (parse/format/tz), JSONPath, Parquet/Arrow, streaming CSV/HTTP, DataFrame bridge (Arrow).
+- HTTP client extensions (native): multipart/form‑data upload, download‑to‑file (streamed), per‑request retry/backoff and redirect policy, optional cookie jar; keep `LEXON_ALLOW_HTTP` gating.
+- JSON↔Dataset bridges: direct bridge from JSON array of flat objects to Dataset and helper `json_array_to_csv` (or equivalent) to simplify CSV export without manual loops.
+- Sockets (opt‑in, sandboxed): TCP client builtins (`tcp.connect/send/recv/close`) behind `LEXON_ALLOW_NET`, with quotas, size/time limits and no server‑side listeners.
+- FP ergonomics: first‑class lambdas/closures for `map`/`filter`/`reduce` instead of string expressions; maintain string form as a compatibility layer.
+- Observability: full OTLP exporter, spans for LLM/HTTP/RAG/MCP, ready‑to‑use Grafana dashboards.
+- MCP/agents: contract versioning, backpressure and streaming tokens, reproducible multi‑agent examples.
+- Python ecosystem: MCP tools for pandas/numpy a corto plazo; puente Arrow/builtins `py.*` a medio plazo.
+- CI hardening: property‑based tests, fuzz gates, deterministic seeds y budgets, smoke opcionales “real‑mode” con secrets.
+
+<!-- Auxiliary operational notes were removed to keep the roadmap strictly prospective. -->
 
 

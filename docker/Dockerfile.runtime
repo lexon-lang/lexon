@@ -9,3 +9,6 @@ ENTRYPOINT ["/usr/local/bin/lexc-cli"]
 CMD ["--help"]
 
 
+
+
+

@@ -605,8 +605,8 @@ pub struct HirImplBlock {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct HirMethodCall {
-    /// Receiver type or identifier
-    pub target: String,
+    /// Receiver expression (identifier, type name, or any expression)
+    pub target: Box<HirNode>,
     /// Method name
     pub method: String,
     /// Method arguments

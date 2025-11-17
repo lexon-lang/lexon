@@ -1,0 +1,12 @@
+// samples/stdlib/math.lx
+module samples.stdlib.math;
+
+fn main() {
+  print(math.sqrt(9));
+  print(math.pow(2, 3));
+  print(math.min(5, 2));
+  print(math.max(5, 2));
+  print(math.clamp(10, 0, 7));
+}
+
+

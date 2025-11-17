@@ -1,0 +1,6 @@
+module samples.mcp;
+
+let results = mcp__tool_call("web.search", "lexon language");
+print(results);
+
+

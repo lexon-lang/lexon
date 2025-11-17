@@ -1,0 +1,9 @@
+// Impl flattening smoke: call the generated Simple__greet directly
+impl Simple {
+  fn greet(n: string) -> string {
+    return "Hello, " + n;
+  }
+}
+
+let msg = Simple__greet("World");
+print(msg);

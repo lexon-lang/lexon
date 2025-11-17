@@ -1,0 +1,7 @@
+module lib.math;
+
+fn double(x: int) -> int {
+  x + x
+}
+
+

@@ -1,0 +1,14 @@
+// samples/stdlib/strings.lx
+module samples.stdlib.strings;
+
+fn main() {
+  let s = "AbC";
+  print(strings.lower(s));
+  print(strings.upper(s));
+  print(strings.length("hola"));
+  print(strings.replace("banana","na","NA"));
+  let joined = strings.join(strings.split("a,b,c", ","), "|");
+  print(joined);
+}
+
+

@@ -9,9 +9,10 @@ fn ensure_ok(ok: bool, context: string) -> bool {
 
 // (Temporarily avoid additional function until full return typing is enabled for arrays)
 
-// 1) Configuration and session setup (deterministic by default)
-set_default_model("simulated");
-let sid = session_start("simulated", "research_demo");
+// 1) Configuration and session setup (honor LEXON_MODEL if provided; default to real model when posible)
+let model = get_env_or("LEXON_MODEL", "openai:gpt-4o-mini");
+set_default_model(model);
+let sid = session_start(model, "research_demo");
 
 // 2) Ingest minimal fixtures and index as memory (RAG)
 let _ = memory_index__set_metadata("samples/00-hello-lexon.lx", "{ \"category\": \"hello\" }");
@@ -27,7 +28,6 @@ let _ok = save_csv(data_take(data_load("samples/triage/tickets.csv"), max_rows),
 let _ = ensure_ok(_ok, "save_csv: output/ra_top.csv");
 
 // 5) Agents orchestration (basic chain)
-let model = get_env_or("LEXON_MODEL", "simulated");
 let agent = agent_create("summarizer", {"model": model, "budget_usd": 0.01, "deadline_ms": 1000});
 let steps = [
   "Summarize top issues in 1-2 lines.",
@@ -35,28 +35,21 @@ let steps = [
 ];
 let _chain_res = agent_chain(agent, steps);
 
-// Iterate over steps (for-in loop demo) without changing outputs
-for s in steps {
-  if (s == "") { /* no-op */ }
-}
-
-// While-like effect (single increment; avoid unsupported comparison in while)
-let attempts: int = 0;
-attempts = attempts + 1;
-
 // 6) Debate & arbitration
 let consensus = ask_ensemble([
   "Provide a concise summary of the repository scope",
   "Summarize the main capabilities of Lexon"
-], "MajorityVote", "simulated");
-let arb = model_arbitrage("Should we enable real providers by default for demos?", "simulated", "simulated", 1);
+], "MajorityVote", model);
+// Use multi-model arbitration with a distinct decider
+let arb = model_arbitrage(
+  "Should we enable real providers by default for demos?",
+  ["openai:gpt-4o-mini", "google:gemini-1.5-pro"],
+  "openai:gpt-4o",
+  1
+);
 
 // 7) Anti-hallucination (basic)
-let safe = ask_safe {
-  user: "Name the project and one key feature";
-  validation: "basic";
-  confidence_threshold: 0.6;
-};
+let safe = ask_with_validation("Name the project and one key feature", { "min_confidence": 0.6, "validation_types": ["basic"] });
 
 // 8) Streaming + multioutput (deterministic files)
 let mo = ask_multioutput("Create a short report and a CSV with 2 rows", ["report.md", "appendix.csv"]);
@@ -74,8 +67,118 @@ let _ = session_ask(sid, "Capture key conclusions of the report.");
 let _sum = session_summarize(sid, { max_len: 200 });
 let _cmp = session_compress(sid, { ratio: 0.5 });
 
-print("CONSENSUS:\n" + consensus);
-print("ARBITRAGE:\n" + arb);
-print("SAFE:\n" + safe);
+print("CONSENSUS:\n");
+print(consensus);
+print("ARBITRAGE:\n");
+print(arb);
+print("SAFE:\n");
+print(safe);
+// 7.1) Web search (configurable via RA_QUERY and RA_CITATIONS_N)
+let topic = get_env_or("RA_QUERY", "micro agent communication protocol");
+let n_search_str = get_env_or("RA_CITATIONS_N", "5");
+let n_search: int = 5;
+if (n_search_str == "1") { n_search = 1; }
+if (n_search_str == "2") { n_search = 2; }
+if (n_search_str == "3") { n_search = 3; }
+if (n_search_str == "4") { n_search = 4; }
+if (n_search_str == "5") { n_search = 5; }
+let web = web__search(topic, n_search);
+print("WEB:\n");
+print(web);
 print("OK Research Analyst");
 
+
+// 12) OO integration: use trait+impl to format a real summary and persist it
+import reporting;
+
+// Build a typed-like report using struct helpers
+let report = struct.new("Report", "{}");
+report = struct.set(report, "title", "Research Analyst — Key Conclusions");
+let c_text = consensus + "";
+let a_text = arb + "";
+let s_text = safe + "";
+report = struct.set(report, "consensus", c_text);
+report = struct.set(report, "arbitrage", a_text);
+report = struct.set(report, "safe", s_text);
+
+// Compose markdown content via imported module (multi-file)
+let _heading = "# Research Analyst - Key Conclusions";
+// 11) Next actions (concise bullets with owner and due date)
+let next_actions = ask_with_validation(
+  "Given the above CONSENSUS and ARBITRAGE, propose 3 next actions with an owner and a due date within 7 days. Use concise bullet points.",
+  { "min_confidence": 0.6, "validation_types": ["basic"] }
+);
+
+// Organic use with native error handling
+let acts_text = next_actions + "";
+
+// Build summary via reporting module
+let summary_md = reporting__build_summary(_heading, c_text, a_text, s_text, acts_text);
+
+// 11.1) Build CITATIONS dynamically with a loop
+fn build_citations_dynamic(web: json, n: int, maxlen: int) -> string {
+  let out = "\n\nCITATIONS:\n";
+  let added: int = 0;
+  let i: int = 0;
+  let result = out;
+  while (i < n) {
+    // Build JSON path without '+' to avoid lowering issues
+    let i_str = number.format(i, 0);
+    let path = strings.join(["/Results/", i_str], "");
+    let item = json.path(web, path);
+    let item_s = json.to_string(item);
+    if (item_s == "null") { break; }
+
+    let base_title = regex.replace(json.as_string(json.get(item, "title")), "^null$", json.as_string(json.get(item, "Text")));
+    let base_url = regex.replace(json.as_string(json.get(item, "url")), "^null$", json.as_string(json.get(item, "FirstURL")));
+
+    let cur_title = base_title;
+    let t_len = strings.length(cur_title);
+    if (t_len > maxlen) {
+      cur_title = strings.substring(cur_title, 0, maxlen);
+      cur_title = strings.join([cur_title, "..."], "");
+    }
+
+    let cur_url = base_url;
+    if (strings.starts_with(base_url, "www.")) {
+      cur_url = strings.join(["https://", base_url], "");
+    }
+
+    let ok = (cur_title != "null") && (cur_url != "null");
+    if (ok) {
+      let line_parts = ["- ", cur_title, " (", cur_url, ")\n"];
+      let line = strings.join(line_parts, "");
+      result = strings.join([result, line], "");
+      added = added + 1;
+    }
+    i = i + 1;
+  }
+  if (added == 0) { result = strings.join([result, "- No citations available\n"], ""); }
+  result = strings.join([result, "- See WEB section for details\n"], "");
+  return result;
+}
+
+let citations_md = build_citations_dynamic(web, n_search, 100);
+summary_md = strings.join([summary_md, citations_md], "");
+
+// Ensure real newlines in saved file (convert literal "\n" to newline characters)
+summary_md = strings.replace(summary_md, "\\n", "\n");
+
+let _ok_summary = save_file(summary_md, "output/ra_summary.md");
+// Also write a copy to the repository root output/ for convenience in IDE previews
+let _ok_summary2 = save_file(summary_md, "../output/ra_summary.md");
+print("SUMMARY SAVED: output/ra_summary.md");
+
+// 13) WOW: add timestamp, checksum and minor string/regex transforms
+let ts = time.now_iso8601();
+let checksum = crypto.sha256(summary_md);
+let pretty_model = strings.upper(model);
+let normalized_title = regex.replace(_heading, "[^A-Za-z0-9\\-\\s]", "");
+let meta = strings.join(["Generated: ", ts], "");
+meta = strings.join([meta, "\nModel: ", pretty_model], "");
+meta = strings.join([meta, "\nChecksum: ", checksum], "");
+meta = strings.join([meta, "\nTitle: ", normalized_title, "\n"], "");
+let _ok_meta = save_file(meta, "output/ra_meta.txt");
+let _snap_ok = save_file(checksum, "output/ra_snapshot.txt");
+let _ok_meta2 = save_file(meta, "../output/ra_meta.txt");
+let _snap_ok2 = save_file(checksum, "../output/ra_snapshot.txt");

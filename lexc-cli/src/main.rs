@@ -160,7 +160,7 @@ enum Cli {
 #[derive(Args, Debug, Clone)]
 struct RunArgs {
     input_file: PathBuf,
-    #[arg(long, short='v')]
+    #[arg(long, short = 'v')]
     verbose: bool,
 }
 
@@ -356,7 +356,9 @@ fn lint_command(largs: LintArgs) {
                     }
                 } else {
                     had_issues = true;
-                    if !res.warnings.is_empty() { had_warnings = true; }
+                    if !res.warnings.is_empty() {
+                        had_warnings = true;
+                    }
                     for w in res.warnings {
                         match w {
                             lexlint::LintWarning::MissingAwait {
@@ -424,41 +426,157 @@ fn lint_command(largs: LintArgs) {
             }
         }
     }
-    if largs.strict && had_warnings { std::process::exit(2); }
-    if had_issues { std::process::exit(2); }
+    if largs.strict && had_warnings {
+        std::process::exit(2);
+    }
+    if had_issues {
+        std::process::exit(2);
+    }
 }
 
 fn run_command(rargs: RunArgs) {
     let rt = TokioRuntime::new().expect("Tokio runtime");
-    let args = CompileArgs { input_file: Some(rargs.input_file), check: false, emit_json_schema: false, emit: None, run: true, optimize: false, all_opts: false, verbose: rargs.verbose, export_ir: None, load_ir: None, llm_model: None, llm_api_key: None, memory_path: None, timeout: None, async_mode: false, bench: false, allow_exec: false, workspace: None };
-    if let Err(e) = compile_flow(&args, &rt) { eprintln!("Error: {}", e); std::process::exit(1); }
+    let args = CompileArgs {
+        input_file: Some(rargs.input_file),
+        check: false,
+        emit_json_schema: false,
+        emit: None,
+        run: true,
+        optimize: false,
+        all_opts: false,
+        verbose: rargs.verbose,
+        export_ir: None,
+        load_ir: None,
+        llm_model: None,
+        llm_api_key: None,
+        memory_path: None,
+        timeout: None,
+        async_mode: false,
+        bench: false,
+        allow_exec: false,
+        workspace: None,
+    };
+    if let Err(e) = compile_flow(&args, &rt) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
 }
 
 fn config_command(cargs: ConfigArgs) {
     // Print effective runtime/env config
     let mut map = serde_json::Map::new();
-    map.insert("routing_policy".to_string(), serde_json::Value::String(std::env::var("LEXON_ROUTING_POLICY").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("ab_models".to_string(), serde_json::Value::String(std::env::var("LEXON_AB_MODELS").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("provider_health".to_string(), serde_json::Value::String(std::env::var("LEXON_PROVIDER_HEALTH").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("llm_retries".to_string(), serde_json::Value::String(std::env::var("LEXON_LLM_RETRIES").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("llm_backoff_ms".to_string(), serde_json::Value::String(std::env::var("LEXON_LLM_BACKOFF_MS").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("canary_model".to_string(), serde_json::Value::String(std::env::var("LEXON_CANARY_MODEL").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("canary_percent".to_string(), serde_json::Value::String(std::env::var("LEXON_CANARY_PERCENT").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("provider_budgets".to_string(), serde_json::Value::String(std::env::var("LEXON_PROVIDER_BUDGETS").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("provider_capacity".to_string(), serde_json::Value::String(std::env::var("LEXON_PROVIDER_CAPACITY").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("routing_weights".to_string(), serde_json::Value::String(std::env::var("LEXON_ROUTING_WEIGHTS").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("quality_schema_enforce".to_string(), serde_json::Value::String(std::env::var("LEXON_QUALITY_SCHEMA_ENFORCE").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("quality_pii_block".to_string(), serde_json::Value::String(std::env::var("LEXON_QUALITY_PII_BLOCK").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("vector_backend".to_string(), serde_json::Value::String(std::env::var("LEXON_VECTOR_BACKEND").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("qdrant_url".to_string(), serde_json::Value::String(std::env::var("LEXON_QDRANT_URL").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("qdrant_collection".to_string(), serde_json::Value::String(std::env::var("LEXON_QDRANT_COLLECTION").unwrap_or_else(|_| "(unset)".to_string())));
-    map.insert("qdrant_throttle_ms".to_string(), serde_json::Value::String(std::env::var("LEXON_QDRANT_THROTTLE_MS").unwrap_or_else(|_| "(unset)".to_string())));
-    if cargs.json { println!("{}", serde_json::Value::Object(map).to_string()); } else { println!("LEXON effective config:\n{}", serde_json::to_string_pretty(&serde_json::Value::Object(map)).unwrap()); }
+    map.insert(
+        "routing_policy".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_ROUTING_POLICY").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "ab_models".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_AB_MODELS").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "provider_health".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_PROVIDER_HEALTH").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "llm_retries".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_LLM_RETRIES").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "llm_backoff_ms".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_LLM_BACKOFF_MS").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "canary_model".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_CANARY_MODEL").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "canary_percent".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_CANARY_PERCENT").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "provider_budgets".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_PROVIDER_BUDGETS").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "provider_capacity".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_PROVIDER_CAPACITY").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "routing_weights".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_ROUTING_WEIGHTS").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "quality_schema_enforce".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_QUALITY_SCHEMA_ENFORCE").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "quality_pii_block".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_QUALITY_PII_BLOCK").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "vector_backend".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_VECTOR_BACKEND").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "qdrant_url".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_QDRANT_URL").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "qdrant_collection".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_QDRANT_COLLECTION").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    map.insert(
+        "qdrant_throttle_ms".to_string(),
+        serde_json::Value::String(
+            std::env::var("LEXON_QDRANT_THROTTLE_MS").unwrap_or_else(|_| "(unset)".to_string()),
+        ),
+    );
+    if cargs.json {
+        println!("{}", serde_json::Value::Object(map).to_string());
+    } else {
+        println!(
+            "LEXON effective config:\n{}",
+            serde_json::to_string_pretty(&serde_json::Value::Object(map)).unwrap()
+        );
+    }
 }
 
 fn new_command(nargs: NewArgs) {
     let root = &nargs.dir;
-    if let Err(e) = std::fs::create_dir_all(root) { eprintln!("Error: {}", e); std::process::exit(1); }
+    if let Err(e) = std::fs::create_dir_all(root) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
     let samples = root.join("samples");
     let src = root.join("src");
     let _ = std::fs::create_dir_all(&samples);
@@ -517,18 +635,99 @@ fn compile_flow(args: &CompileArgs, rt: &TokioRuntime) -> Result<Option<f64>, St
             .input_file
             .as_ref()
             .ok_or_else(|| "--input-file is required".to_string())?;
-        let source =
-            fs::read_to_string(input).map_err(|e| format!("Reading {}: {}", input.display(), e))?;
-        let mut parser = Parser::new();
-        let language = unsafe { tree_sitter_lexon() };
-        parser
-            .set_language(&language)
-            .map_err(|e| format!("Parser config error: {}", e))?;
-        let tree = parser
-            .parse(&source, None)
-            .ok_or_else(|| "Parse error".to_string())?;
-        let hir_nodes = hir_builder::build_hir_from_cst(tree.root_node(), &source)
-            .map_err(|e| format!("HIR error: {:?}", e))?;
+        // Load entry file and recursively load imports (multi-file modules)
+        fn parse_file_to_hir(path: &std::path::Path) -> Result<Vec<lexc::hir::HirNode>, String> {
+            let source = fs::read_to_string(path)
+                .map_err(|e| format!("Reading {}: {}", path.display(), e))?;
+            let mut parser = Parser::new();
+            let language = unsafe { tree_sitter_lexon() };
+            parser
+                .set_language(&language)
+                .map_err(|e| format!("Parser config error: {}", e))?;
+            let tree = parser
+                .parse(&source, None)
+                .ok_or_else(|| "Parse error".to_string())?;
+            let hir_nodes = hir_builder::build_hir_from_cst(tree.root_node(), &source)
+                .map_err(|e| format!("HIR error: {:?}", e))?;
+            Ok(hir_nodes)
+        }
+
+        fn collect_imports_rec(
+            start: &std::path::Path,
+            visited: &mut std::collections::HashSet<String>,
+        ) -> Result<Vec<lexc::hir::HirNode>, String> {
+            let abs = std::fs::canonicalize(start).unwrap_or(start.to_path_buf());
+            let key = abs.to_string_lossy().to_string();
+            if !visited.insert(key) {
+                return Ok(Vec::new());
+            }
+            let mut all = parse_file_to_hir(&abs)?;
+            // Find imports and load them
+            use lexc::hir::HirNode;
+            let dir = abs.parent().unwrap_or(std::path::Path::new("."));
+            let roots_env = std::env::var("LEXON_MODULE_ROOTS").unwrap_or_default();
+            let extra_roots: Vec<std::path::PathBuf> = roots_env
+                .split(':')
+                .filter(|s| !s.is_empty())
+                .map(|s| std::path::PathBuf::from(s))
+                .collect();
+            let mut to_load: Vec<std::path::PathBuf> = Vec::new();
+            for node in &all {
+                if let HirNode::ImportDeclaration(import) = node {
+                    if !import.path.is_empty() {
+                        let rel = import.path.join("/");
+                        let rel_file = rel.clone() + ".lx";
+                        // Candidate paths: <rel>.lx, <rel>/index.lx, <rel>/mod.lx in current dir and extra roots
+                        let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+                        // current dir
+                        candidates.push(dir.join(&rel_file));
+                        candidates.push(dir.join(&rel).join("index.lx"));
+                        candidates.push(dir.join(&rel).join("mod.lx"));
+                        // extra roots
+                        for r in &extra_roots {
+                            candidates.push(r.join(&rel_file));
+                            candidates.push(r.join(&rel).join("index.lx"));
+                            candidates.push(r.join(&rel).join("mod.lx"));
+                        }
+                        let chosen = candidates.iter().find(|p| p.exists()).cloned();
+                        if let Some(p) = chosen {
+                            to_load.push(p);
+                        } else {
+                            // Better diagnostics: list searched candidates and hint about LEXON_MODULE_ROOTS
+                            let mut msg = String::new();
+                            msg.push_str(&format!("Import not found: '{}'\n", rel));
+                            msg.push_str("Searched candidate files:\n");
+                            for c in &candidates {
+                                msg.push_str(&format!(" - {}\n", c.display()));
+                            }
+                            let roots_hint = if extra_roots.is_empty() {
+                                "(no LEXON_MODULE_ROOTS set)".to_string()
+                            } else {
+                                format!(
+                                    "LEXON_MODULE_ROOTS={}",
+                                    std::env::var("LEXON_MODULE_ROOTS").unwrap_or_default()
+                                )
+                            };
+                            msg.push_str(&format!(
+                                "Module search roots: {} and {}\n",
+                                dir.display(),
+                                roots_hint
+                            ));
+                            msg.push_str("Hint: set LEXON_MODULE_ROOTS to additional module directories, e.g. export LEXON_MODULE_ROOTS=modules:shared\n");
+                            return Err(msg);
+                        }
+                    }
+                }
+            }
+            for p in to_load {
+                let mut more = collect_imports_rec(&p, visited)?;
+                all.append(&mut more);
+            }
+            Ok(all)
+        }
+
+        let mut visited = std::collections::HashSet::new();
+        let hir_nodes = collect_imports_rec(input, &mut visited)?;
 
         // Sandbox checks on HIR
         enforce_sandbox(&hir_nodes, args).map_err(|e| format!("Sandbox: {}", e))?;

@@ -1,0 +1,15 @@
+// Instance method dispatch via receiver __type
+impl Greeter {
+  fn greet(name: string) -> string {
+    return "Hello, " + name;
+  }
+}
+
+let greeter = struct.new("Greeter", "{}");
+let msg = greeter.greet("Ada");
+print(msg);
+
+
+
+
+

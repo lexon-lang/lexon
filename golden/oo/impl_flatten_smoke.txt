@@ -1,0 +1,5 @@
+📄 Vector Memory System initialized with SQLite backend
+Hello, 
+
+
+

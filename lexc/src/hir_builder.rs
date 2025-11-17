@@ -388,12 +388,8 @@ fn build_hir_expression(expr_node: Node, source_code: &str) -> Result<HirNode, H
                     field_name: "target".to_string(),
                 }
             })?;
-            let target_name = get_node_text(target_node, source_code).ok_or_else(|| {
-                HirBuildError::MissingField {
-                    node_type: "identifier".to_string(),
-                    field_name: "text".to_string(),
-                }
-            })?;
+            // Allow receiver to be any expression (identifier, literal, parenthesized expr, etc.)
+            let target_expr = build_hir_expression(target_node, source_code)?;
             let method_node = expr_node.child_by_field_name("method").ok_or_else(|| {
                 HirBuildError::MissingField {
                     node_type: "method_call".to_string(),
@@ -410,7 +406,7 @@ fn build_hir_expression(expr_node: Node, source_code: &str) -> Result<HirNode, H
                 }
             }
             let hir_mc = HirMethodCall {
-                target: target_name,
+                target: Box::new(target_expr),
                 method: method_name,
                 args,
             };
@@ -922,7 +918,22 @@ fn build_hir_expression(expr_node: Node, source_code: &str) -> Result<HirNode, H
                     field_name: "function".to_string(),
                 }
             })?;
-            let func_name = get_node_text(func_node, source_code).unwrap_or_default();
+            // Try to capture fully-qualified name up to the opening parenthesis
+            let start = func_node.start_byte();
+            let src_bytes = source_code.as_bytes();
+            let mut end = start;
+            while end < src_bytes.len() {
+                if src_bytes[end] as char == '(' {
+                    break;
+                }
+                end += 1;
+            }
+            let func_span = if end > start {
+                source_code[start..end].to_string()
+            } else {
+                get_node_text(func_node, source_code).unwrap_or_default()
+            };
+            let func_name = func_span.trim().to_string();
 
             let mut args = Vec::new();
             let mut fc_cursor = expr_node.walk();
@@ -1609,10 +1620,13 @@ pub fn build_hir_from_cst(
 
     for top_level_node in root_cst_node.children(&mut cursor) {
         if top_level_node.is_error() {
-            eprintln!(
-                "Skipping CST error node during HIR build: {:?}",
-                top_level_node.to_sexp()
-            );
+            // Gate noisy parser error-node logs behind VERBOSE
+            if std::env::var("LEXON_VERBOSE").ok().as_deref() == Some("1") {
+                eprintln!(
+                    "Skipping CST error node during HIR build: {:?}",
+                    top_level_node.to_sexp()
+                );
+            }
             continue;
         }
 
@@ -1637,47 +1651,46 @@ pub fn build_hir_from_cst(
                 };
                 hir_nodes.push(HirNode::ModuleDeclaration(Box::new(hir_module)));
             }
-            "import_statement" => {
-                // Handle both simple_import and from_import
-                if let Some(simple_import) = top_level_node.child_by_field_name("path") {
-                    // Simple import: import core.llm; or import core.llm as llm;
-                    let import_path =
-                        get_node_text(simple_import, source_code).ok_or_else(|| {
-                            HirBuildError::MissingField {
-                                node_type: "simple_import".to_string(),
-                                field_name: "path".to_string(),
-                            }
-                        })?;
-
-                    let alias = top_level_node
-                        .child_by_field_name("alias")
-                        .and_then(|n| get_node_text(n, source_code));
-
-                    let hir_import = HirImportDeclaration {
-                        path: import_path.split('.').map(|s| s.to_string()).collect(),
-                        items: Vec::new(), // Simple import, no specific items
-                        alias,
-                    };
-                    hir_nodes.push(HirNode::ImportDeclaration(Box::new(hir_import)));
+            "import_statement" | "simple_import" | "from_import" => {
+                // Normalize node to either a simple_import or from_import node
+                let (node_kind, node_ref) = if top_level_node.kind() == "import_statement" {
+                    // Find the child that is either simple_import or from_import
+                    let mut it = top_level_node.walk();
+                    let mut found = None;
+                    for child in top_level_node.children(&mut it) {
+                        if child.kind() == "simple_import" || child.kind() == "from_import" {
+                            found = Some(child);
+                            break;
+                        }
+                    }
+                    let c = found.ok_or_else(|| HirBuildError::MissingField {
+                        node_type: "import_statement".to_string(),
+                        field_name: "child(simple|from)_import".to_string(),
+                    })?;
+                    (c.kind().to_string(), c)
                 } else {
-                    // from_import: from core.types import string, int as entero;
-                    let path_node =
-                        top_level_node.child_by_field_name("path").ok_or_else(|| {
-                            HirBuildError::MissingField {
-                                node_type: "from_import".to_string(),
-                                field_name: "path".to_string(),
-                            }
-                        })?;
+                    (top_level_node.kind().to_string(), top_level_node)
+                };
+
+                if node_kind == "simple_import" {
+                    let path_node = node_ref.child_by_field_name("path").ok_or_else(|| {
+                        HirBuildError::MissingField {
+                            node_type: "simple_import".to_string(),
+                            field_name: "path".to_string(),
+                        }
+                    })?;
                     let import_path = get_node_text(path_node, source_code).ok_or_else(|| {
                         HirBuildError::MissingField {
                             node_type: "dotted_identifier".to_string(),
                             field_name: "text".to_string(),
                         }
                     })?;
-
-                    // Parse import items
+                    let alias = node_ref
+                        .child_by_field_name("alias")
+                        .and_then(|n| get_node_text(n, source_code));
+                    // Some grammars may attach braced items to simple_import; parse them if present
                     let mut items = Vec::new();
-                    if let Some(items_node) = top_level_node.child_by_field_name("items") {
+                    if let Some(items_node) = node_ref.child_by_field_name("items") {
                         let mut items_cursor = items_node.walk();
                         for item_node in items_node.children(&mut items_cursor) {
                             if item_node.kind() == "import_item" {
@@ -1696,7 +1709,55 @@ pub fn build_hir_from_cst(
                             }
                         }
                     }
-
+                    let hir_import = if items.is_empty() {
+                        HirImportDeclaration {
+                            path: import_path.split('.').map(|s| s.to_string()).collect(),
+                            items: Vec::new(),
+                            alias,
+                        }
+                    } else {
+                        // When items present, treat as from_import semantics; ignore module alias
+                        HirImportDeclaration {
+                            path: import_path.split('.').map(|s| s.to_string()).collect(),
+                            items,
+                            alias: None,
+                        }
+                    };
+                    hir_nodes.push(HirNode::ImportDeclaration(Box::new(hir_import)));
+                } else {
+                    // from_import
+                    let path_node = node_ref.child_by_field_name("path").ok_or_else(|| {
+                        HirBuildError::MissingField {
+                            node_type: "from_import".to_string(),
+                            field_name: "path".to_string(),
+                        }
+                    })?;
+                    let import_path = get_node_text(path_node, source_code).ok_or_else(|| {
+                        HirBuildError::MissingField {
+                            node_type: "dotted_identifier".to_string(),
+                            field_name: "text".to_string(),
+                        }
+                    })?;
+                    let mut items = Vec::new();
+                    if let Some(items_node) = node_ref.child_by_field_name("items") {
+                        let mut items_cursor = items_node.walk();
+                        for item_node in items_node.children(&mut items_cursor) {
+                            if item_node.kind() == "import_item" {
+                                let item_name = item_node
+                                    .child(0)
+                                    .and_then(|n| get_node_text(n, source_code))
+                                    .unwrap_or_default();
+                                let item_alias = if item_node.child_count() > 2 {
+                                    item_node
+                                        .child(2)
+                                        .and_then(|n| get_node_text(n, source_code))
+                                } else {
+                                    None
+                                };
+                                items.push((item_name, item_alias));
+                            }
+                        }
+                    }
                     let hir_import = HirImportDeclaration {
                         path: import_path.split('.').map(|s| s.to_string()).collect(),
                         items,
@@ -2275,10 +2336,7 @@ pub fn build_hir_from_cst(
                 let mut impl_cursor = top_level_node.walk();
                 for child in top_level_node.children(&mut impl_cursor) {
                     if child.kind() == "function_definition" {
-                        // Reuse existing logic by temporarily treating as top-level
-                        // Simplify: call build_hir_expression? but we need function_def. We'll replicate minimal parse similar to earlier.
-                        // For now we skip body parsing and just capture signature.
-                        // For now we skip body parsing and just capture signature.
+                        // Name
                         let fn_name_node = child.child_by_field_name("name").ok_or_else(|| {
                             HirBuildError::MissingField {
                                 node_type: "function_definition".to_string(),
@@ -2286,24 +2344,363 @@ pub fn build_hir_from_cst(
                             }
                         })?;
                         let fn_name = get_node_text(fn_name_node, source_code).unwrap_or_default();
-                        let return_type_node_opt = child.child_by_field_name("return_type");
-                        let return_type_text =
-                            return_type_node_opt.and_then(|n| get_node_text(n, source_code));
 
+                        // Generics
                         let type_params_node = child.child_by_field_name("type_params");
                         let type_parameters = type_params_node
                             .map(|n| parse_generic_parameters(n, source_code))
                             .unwrap_or_default();
 
-                        // Parse impl function parameters
+                        // Return type
+                        let return_type_node_opt = child.child_by_field_name("return_type");
+                        let return_type_text =
+                            return_type_node_opt.and_then(|n| get_node_text(n, source_code));
+
+                        // Body
+                        let body_node = child.child_by_field_name("body").ok_or_else(|| {
+                            HirBuildError::MissingField {
+                                node_type: "function_definition".to_string(),
+                                field_name: "body".to_string(),
+                            }
+                        })?;
+                        let mut body_hir_nodes = Vec::<HirNode>::new();
+                        let mut body_cursor = body_node.walk();
+                        for statement_node in body_node.children(&mut body_cursor) {
+                            match statement_node.kind() {
+                                "variable_declaration" => {
+                                    let var_name_node = statement_node
+                                        .child_by_field_name("name")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "variable_declaration".to_string(),
+                                            field_name: "name".to_string(),
+                                        })?;
+                                    let var_name = get_node_text(var_name_node, source_code)
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "identifier".to_string(),
+                                            field_name: "text".to_string(),
+                                        })?;
+                                    let type_node_opt = statement_node.child_by_field_name("type");
+                                    let value_cst_node = statement_node
+                                        .child_by_field_name("value")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "variable_declaration".to_string(),
+                                            field_name: "value".to_string(),
+                                        })?;
+                                    let hir_value_node =
+                                        build_hir_expression(value_cst_node, source_code)?;
+                                    let type_name_str = get_variable_type_name(
+                                        type_node_opt,
+                                        &hir_value_node,
+                                        source_code,
+                                    );
+                                    let hir_var_decl = HirVariableDeclaration {
+                                        name: var_name,
+                                        type_name: type_name_str,
+                                        value: Box::new(hir_value_node),
+                                    };
+                                    body_hir_nodes
+                                        .push(HirNode::VariableDeclaration(Box::new(hir_var_decl)));
+                                }
+                                "while_statement" => {
+                                    let condition_node = statement_node
+                                        .child_by_field_name("condition")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "while_statement".to_string(),
+                                            field_name: "condition".to_string(),
+                                        })?;
+                                    let condition_expr =
+                                        build_hir_expression(condition_node, source_code)?;
+                                    let body_block = statement_node
+                                        .child_by_field_name("body")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "while_statement".to_string(),
+                                            field_name: "body".to_string(),
+                                        })?;
+                                    let mut inner = Vec::new();
+                                    let mut c2 = body_block.walk();
+                                    for stmt in body_block.children(&mut c2) {
+                                        match stmt.kind() {
+                                            "break_statement" => inner.push(HirNode::Break),
+                                            "continue_statement" => inner.push(HirNode::Continue),
+                                            _ => {}
+                                        }
+                                    }
+                                    body_hir_nodes.push(HirNode::While(Box::new(HirWhile {
+                                        condition: Box::new(condition_expr),
+                                        body: inner,
+                                    })));
+                                }
+                                "if_statement" => {
+                                    let condition_node = statement_node
+                                        .child_by_field_name("condition")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "if_statement".to_string(),
+                                            field_name: "condition".to_string(),
+                                        })?;
+                                    let condition_expr =
+                                        build_hir_expression(condition_node, source_code)?;
+                                    let consequence_node = statement_node
+                                        .child_by_field_name("consequence")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "if_statement".to_string(),
+                                            field_name: "consequence".to_string(),
+                                        })?;
+                                    let mut then_body = Vec::new();
+                                    let mut then_cursor = consequence_node.walk();
+                                    for stmt in consequence_node.children(&mut then_cursor) {
+                                        if stmt.kind() == "expression_statement" {
+                                            if let Some(expr_child) = stmt.named_child(0) {
+                                                then_body.push(build_hir_expression(
+                                                    expr_child,
+                                                    source_code,
+                                                )?);
+                                            }
+                                        } else if stmt.kind() == "variable_declaration" {
+                                            let var_name_node = stmt
+                                                .child_by_field_name("name")
+                                                .ok_or_else(|| HirBuildError::MissingField {
+                                                    node_type: "variable_declaration".to_string(),
+                                                    field_name: "name".to_string(),
+                                                })?;
+                                            let var_name =
+                                                get_node_text(var_name_node, source_code)
+                                                    .ok_or_else(|| HirBuildError::MissingField {
+                                                        node_type: "identifier".to_string(),
+                                                        field_name: "text".to_string(),
+                                                    })?;
+                                            let type_node = stmt
+                                                .child_by_field_name("type")
+                                                .ok_or_else(|| HirBuildError::MissingField {
+                                                    node_type: "variable_declaration".to_string(),
+                                                    field_name: "type".to_string(),
+                                                })?;
+                                            let type_name_str =
+                                                get_node_text(type_node, source_code);
+                                            let value_cst_node = stmt
+                                                .child_by_field_name("value")
+                                                .ok_or_else(|| HirBuildError::MissingField {
+                                                    node_type: "variable_declaration".to_string(),
+                                                    field_name: "value".to_string(),
+                                                })?;
+                                            let hir_value_node =
+                                                build_hir_expression(value_cst_node, source_code)?;
+                                            let hir_var_decl = HirVariableDeclaration {
+                                                name: var_name,
+                                                type_name: type_name_str,
+                                                value: Box::new(hir_value_node),
+                                            };
+                                            then_body.push(HirNode::VariableDeclaration(Box::new(
+                                                hir_var_decl,
+                                            )));
+                                        }
+                                    }
+                                    let else_body = if let Some(alternative_node) =
+                                        statement_node.child_by_field_name("alternative")
+                                    {
+                                        let mut else_stmts = Vec::new();
+                                        let mut else_cursor = alternative_node.walk();
+                                        for stmt in alternative_node.children(&mut else_cursor) {
+                                            if stmt.kind() == "expression_statement" {
+                                                if let Some(expr_child) = stmt.named_child(0) {
+                                                    else_stmts.push(build_hir_expression(
+                                                        expr_child,
+                                                        source_code,
+                                                    )?);
+                                                }
+                                            } else if stmt.kind() == "variable_declaration" {
+                                                let var_name_node = stmt
+                                                    .child_by_field_name("name")
+                                                    .ok_or_else(|| HirBuildError::MissingField {
+                                                        node_type: "variable_declaration"
+                                                            .to_string(),
+                                                        field_name: "name".to_string(),
+                                                    })?;
+                                                let var_name =
+                                                    get_node_text(var_name_node, source_code)
+                                                        .ok_or_else(|| {
+                                                            HirBuildError::MissingField {
+                                                                node_type: "identifier".to_string(),
+                                                                field_name: "text".to_string(),
+                                                            }
+                                                        })?;
+                                                let type_node = stmt
+                                                    .child_by_field_name("type")
+                                                    .ok_or_else(|| HirBuildError::MissingField {
+                                                        node_type: "variable_declaration"
+                                                            .to_string(),
+                                                        field_name: "type".to_string(),
+                                                    })?;
+                                                let type_name_str =
+                                                    get_node_text(type_node, source_code);
+                                                let value_cst_node = stmt
+                                                    .child_by_field_name("value")
+                                                    .ok_or_else(|| HirBuildError::MissingField {
+                                                        node_type: "variable_declaration"
+                                                            .to_string(),
+                                                        field_name: "value".to_string(),
+                                                    })?;
+                                                let hir_value_node = build_hir_expression(
+                                                    value_cst_node,
+                                                    source_code,
+                                                )?;
+                                                let hir_var_decl = HirVariableDeclaration {
+                                                    name: var_name,
+                                                    type_name: type_name_str,
+                                                    value: Box::new(hir_value_node),
+                                                };
+                                                else_stmts.push(HirNode::VariableDeclaration(
+                                                    Box::new(hir_var_decl),
+                                                ));
+                                            }
+                                        }
+                                        Some(else_stmts)
+                                    } else {
+                                        None
+                                    };
+                                    body_hir_nodes.push(HirNode::If(Box::new(HirIf {
+                                        condition: Box::new(condition_expr),
+                                        then_body,
+                                        else_body,
+                                    })));
+                                }
+                                "break_statement" => body_hir_nodes.push(HirNode::Break),
+                                "continue_statement" => body_hir_nodes.push(HirNode::Continue),
+                                "return_statement" => {
+                                    let return_expr = if statement_node.child_count() > 1 {
+                                        if let Some(expr_node) = statement_node.child(1) {
+                                            if expr_node.kind() != ";" {
+                                                Some(Box::new(build_hir_expression(
+                                                    expr_node,
+                                                    source_code,
+                                                )?))
+                                            } else {
+                                                None
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    };
+                                    body_hir_nodes.push(HirNode::Return(Box::new(HirReturn {
+                                        expression: return_expr,
+                                    })));
+                                }
+                                "for_in_statement" => {
+                                    let iter_node = statement_node
+                                        .child_by_field_name("iterator")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "for_in_statement".to_string(),
+                                            field_name: "iterator".to_string(),
+                                        })?;
+                                    let iterator_name =
+                                        get_node_text(iter_node, source_code).unwrap_or_default();
+                                    let iterable_node = statement_node
+                                        .child_by_field_name("iterable")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "for_in_statement".to_string(),
+                                            field_name: "iterable".to_string(),
+                                        })?;
+                                    let iterable_expr =
+                                        build_hir_expression(iterable_node, source_code)?;
+                                    let body_block = statement_node
+                                        .child_by_field_name("body")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "for_in_statement".to_string(),
+                                            field_name: "body".to_string(),
+                                        })?;
+                                    let mut inner_body = Vec::new();
+                                    let mut inner_cursor = body_block.walk();
+                                    for stmt in body_block.children(&mut inner_cursor) {
+                                        match stmt.kind() {
+                                            "break_statement" => inner_body.push(HirNode::Break),
+                                            "continue_statement" => {
+                                                inner_body.push(HirNode::Continue)
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    body_hir_nodes.push(HirNode::ForIn(Box::new(HirForIn {
+                                        iterator: iterator_name,
+                                        iterable: Box::new(iterable_expr),
+                                        body: inner_body,
+                                    })));
+                                }
+                                "match_statement" => {
+                                    let value_node = statement_node
+                                        .child_by_field_name("value")
+                                        .ok_or_else(|| HirBuildError::MissingField {
+                                            node_type: "match_statement".to_string(),
+                                            field_name: "value".to_string(),
+                                        })?;
+                                    let value_expr = build_hir_expression(value_node, source_code)?;
+                                    let mut arms = Vec::new();
+                                    let mut match_cursor = statement_node.walk();
+                                    for child_arm in statement_node.children(&mut match_cursor) {
+                                        if child_arm.kind() == "match_arm" {
+                                            let pattern_node = child_arm
+                                                .child_by_field_name("pattern")
+                                                .ok_or_else(|| HirBuildError::MissingField {
+                                                    node_type: "match_arm".to_string(),
+                                                    field_name: "pattern".to_string(),
+                                                })?;
+                                            let pattern_expr =
+                                                build_hir_expression(pattern_node, source_code)?;
+                                            let mut body_stmts = Vec::new();
+                                            if let Some(body_node) = child_arm.named_child(2) {
+                                                if body_node.kind() == "block_statement" {
+                                                    let mut bcur = body_node.walk();
+                                                    for stmt in body_node.children(&mut bcur) {
+                                                        if stmt.kind() == "expression_statement" {
+                                                            if let Some(expr_child) =
+                                                                stmt.named_child(0)
+                                                            {
+                                                                body_stmts.push(
+                                                                    build_hir_expression(
+                                                                        expr_child,
+                                                                        source_code,
+                                                                    )?,
+                                                                );
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    let hir_expr = build_hir_expression(
+                                                        body_node,
+                                                        source_code,
+                                                    )?;
+                                                    body_stmts.push(hir_expr);
+                                                }
+                                            }
+                                            arms.push(HirMatchArm {
+                                                pattern: Box::new(pattern_expr),
+                                                body: body_stmts,
+                                            });
+                                        }
+                                    }
+                                    body_hir_nodes.push(HirNode::Match(Box::new(HirMatch {
+                                        value: Box::new(value_expr),
+                                        arms,
+                                    })));
+                                }
+                                "expression_statement" => {
+                                    if let Some(expr_child) = statement_node.named_child(0) {
+                                        body_hir_nodes
+                                            .push(build_hir_expression(expr_child, source_code)?);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        // Parameters
                         let impl_parameters =
                             if let Some(params_node) = child.child_by_field_name("parameters") {
                                 parse_function_parameters(params_node, source_code)
                             } else {
                                 Vec::new()
                             };
-
-                        // Check for async modifier in impl methods
+                        // Async flag
                         let is_async = child.child_by_field_name("async_modifier").is_some();
 
                         let impl_fn = HirFunctionDefinition {
@@ -2311,7 +2708,7 @@ pub fn build_hir_from_cst(
                             parameters: impl_parameters,
                             type_parameters,
                             return_type: return_type_text,
-                            body: Vec::new(),
+                            body: body_hir_nodes,
                             visibility: HirVisibility::Private,
                             is_async,
                         };

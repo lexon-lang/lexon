@@ -1,0 +1,7 @@
+abc
+ABC
+4
+baNANA
+a|b|c
+
+

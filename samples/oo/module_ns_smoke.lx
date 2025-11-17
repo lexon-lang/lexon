@@ -1,0 +1,10 @@
+module analytics.stats;
+
+fn hello() -> string {
+  return "Hello, ";
+}
+
+let a = analytics__stats__hello();
+print(a);
+
+

@@ -1,0 +1,11 @@
+// OO smoke: struct/enum builtins
+let user = struct.new("User", "{}");
+user = struct.set(user, "name", "Ada");
+let name = struct.get(user, "name");
+
+let status = enum.make("Ok", name);
+let who = enum.unwrap(status);
+print("Hello, ");
+print(who);
+
+

@@ -12,6 +12,13 @@ A self-contained RC of the Lexon language and tooling: language/runtime, CLI, sa
 ### What is Lexon?
 Lexon is an LLM‑first programming language with first‑class async/await, LLM orchestration (parallelism, merge, fallback, ensemble), functional data processing, multioutput generation, session memory, and built‑in validation (anti‑hallucination). It emphasizes determinism (seeds, snapshots) and safe defaults (sandboxed I/O).
 
+This RC includes:
+- Advanced RAG helpers (hybrid search, rerank, fuse, summarize).
+- MCP stdio/WS servers with quotas/schemas/heartbeats/progress.
+- Web search builtin (configurable via `lexon.toml`) and HTTP data sources.
+- A focused stdlib (encoding/strings/math/regex/time/number/crypto/json).
+- Multi‑file modules and aliasing.
+
 Quick taste:
 ```lexon
 pub fn main() {
@@ -67,6 +74,56 @@ Creates `output/notes_ActionItems.md` and `output/notes_Summary.json` from a sma
 
 See detailed configuration in `DOCUMENTATION.md`.
 
+### Validation helper: ask_with_validation
+Use `ask_with_validation(prompt, config_json)` to get validated text directly (returns string). Example:
+```lexon
+let s = ask_with_validation("Name the project and one key feature", {
+  "validation_types": ["basic"],
+  "min_confidence": 0.6
+});
+```
+
+### Web search configuration (TOML or env)
+Pick and configure a web search engine via `lexon.toml`:
+```toml
+[web_search]
+provider = "duckduckgo"
+endpoint = "https://duckduckgo.com/"
+query_param = "q"
+count_param = "n"
+format_param = "format"
+format_value = "json"
+auth_mode = "none"         # none|header|query
+auth_name = "Authorization" # header or query param name
+auth_env = "WEB_SEARCH_API_KEY"
+```
+Env override (quick):
+```bash
+export LEXON_WEB_SEARCH_ENDPOINT=https://duckduckgo.com/
+```
+Preset examples (uncomment and set the API key env):
+```toml
+# Brave Search JSON (header API key)
+[web_search]
+provider = "brave"
+endpoint = "https://api.search.brave.com/res/v1/web/search"
+query_param = "q"
+count_param = "count"
+auth_mode = "header"
+auth_name = "X-Subscription-Token"
+auth_env = "BRAVE_SEARCH_API_KEY"
+
+# SerpAPI (query API key)
+#[web_search]
+#provider = "serpapi"
+#endpoint = "https://serpapi.com/search.json"
+#query_param = "q"
+#count_param = "num"
+#auth_mode = "query"
+#auth_name = "api_key"
+#auth_env = "SERPAPI_API_KEY"
+```
+
 <!-- CI: trigger rc build -->
 
 ### Real providers quickstart
@@ -113,6 +170,26 @@ let r = ask("Say hello from a real provider");
 - Agents & orchestration events: create/run/chain/parallel/cancel; supervisor; tool registry with scopes/quotas; `on_tool_call`/`on_tool_error`
 - Telemetry & metrics: rollups JSON, per‑call logs, Prometheus export, starter Grafana dashboard
 - Sandbox by default: safe execution and constrained file I/O
+
+### State of AOT, Optimizer, Fuzzing
+- AOT/native binaries: not implemented in this RC. Planned approaches:
+  - “Embedder” (ship VM + LexIR) as a single binary.
+  - Transpile LexIR→Rust/C then compile.
+- Optimizer: basic constant-folding and string coercions are handled in the executor; a dedicated IR optimizer is planned post-GA.
+- Fuzzing: **available now** via [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz). Three targets live in `fuzz/` (parser, HIR builder, HIR→LexIR). Usage:
+  ```bash
+  rustup toolchain install nightly
+  cargo fuzz list
+  cargo +nightly fuzz run parser_cst -- -max_total_time=10
+  cargo +nightly fuzz run hir_builder -- -max_total_time=10
+  cargo +nightly fuzz run hir_to_lexir -- -max_total_time=10
+  ```
+  Outputs land under `fuzz/artifacts/<target>/`; corpora are tracked (empty placeholders in git).
+
+### Known limitations (RC)
+- Prefer simple, sequential concatenations inside functions, or `strings.join(parts, "")`, to avoid complex expression lowering edge cases.
+- Top‑level expressions should be assignments or calls (avoid bare literals).
+- Truthiness in `if` is permissive (bools, non‑empty strings/arrays/objects, non‑zero numbers; `"true"/"false"` parsed).
 
 ---
 

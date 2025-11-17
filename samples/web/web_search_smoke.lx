@@ -1,0 +1,6 @@
+module samples.web;
+
+let results = web__search("lexon language", 2);
+print(results);
+
+

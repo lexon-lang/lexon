@@ -1,0 +1,14 @@
+module samples.stdlib.json;
+
+pub fn main() {
+  let txt = "{\"a\":1,\"b\":[{\"title\":\"T1\",\"url\":\"u1\"},{\"title\":\"T2\",\"url\":\"u2\"}]}";
+  let j = json.parse(txt);
+  print("TYPE LEN a=" + json.length(json.get(j, "a")));
+  let arr = json.get(j, "b");
+  print("ARR LEN=" + json.length(arr));
+  let first = json.index(arr, 0);
+  print("FIRST TITLE=" + json.to_string(json.get(first, "title")));
+  print("SECOND URL=" + json.to_string(json.path(j, "/b/1/url")));
+}
+
+

@@ -65,6 +65,10 @@ pub fn util() { }
 // import declarations are supported by the grammar; keep module paths under modules_dir
 util();
 ```
+Search and resolution:
+- Imports resolve by trying `<path>.lx`, then `<path>/index.lx`, then `<path>/mod.lx` in the current directory and in any extra roots from `LEXON_MODULE_ROOTS` (colon‑separated).
+- On failure, the CLI will print all candidate paths it tried and a hint to set `LEXON_MODULE_ROOTS`.
+- Aliases and selective imports are supported. Module aliasing (`import lib.math as math;`) and item aliasing (`import lib.math::{double as dbl};`) are resolved during lowering; calls are flattened (e.g., `math::double(3)` → `lib__math__double(3)`). Keep module roots under `modules/` (or set `LEXON_MODULE_ROOTS`) and avoid deep alias chains.
 
 #### 1.5 Operators
 - Arithmetic: `+`, `-`, `*`, `/`, `%`
@@ -106,6 +110,14 @@ let s = ask_safe {
 Function `ask_safe` with named parameters:
 ```lexon
 let s2 = ask_safe("Capital of France?", validation: "basic", max_attempts: 2);
+```
+
+Helper `ask_with_validation` (string result):
+```lexon
+let validated = ask_with_validation("Name the project and one key feature", {
+  "validation_types": ["basic"],
+  "min_confidence": 0.6
+});
 ```
 
 Also available: `ask_parallel(...)`, `ask_merge(responses, "synthesize"|"summarize")`, `ask_with_fallback(models, prompt)`, `ask_ensemble(prompts, strategy, model)`.
@@ -316,6 +328,48 @@ let r3 = ask("Say hello from Gemini", "gemini-1.5-pro");
 print(r3);
 ```
 
+#### 26.1 Web search configuration
+Lexon can perform web searches via `web.search`. Configure it in `lexon.toml` or via environment variables:
+```toml
+[web_search]
+provider = "duckduckgo"
+endpoint = "https://duckduckgo.com/"
+query_param = "q"
+count_param = "n"
+format_param = "format"
+format_value = "json"
+auth_mode = "none"         # none|header|query
+auth_name = "Authorization" # header or param name
+auth_env = "WEB_SEARCH_API_KEY"
+```
+Quick override via env:
+```bash
+export LEXON_WEB_SEARCH_ENDPOINT=https://duckduckgo.com/
+```
+Example presets with API key:
+```toml
+# Brave Search (header key)
+[web_search]
+provider = "brave"
+endpoint = "https://api.search.brave.com/res/v1/web/search"
+query_param = "q"
+count_param = "count"
+auth_mode = "header"
+auth_name = "X-Subscription-Token"
+auth_env = "BRAVE_SEARCH_API_KEY"
+
+# SerpAPI (query key)
+#[web_search]
+#provider = "serpapi"
+#endpoint = "https://serpapi.com/search.json"
+#query_param = "q"
+#count_param = "num"
+#auth_mode = "query"
+#auth_name = "api_key"
+#auth_env = "SERPAPI_API_KEY"
+```
+The runtime signs the request according to `auth_mode` and appends any `extra_params` defined in TOML.
+
 ### 27. Sessions API details
 
 Signatures:
@@ -414,3 +468,262 @@ The executor returns structured errors surfaced as runtime failures:
 
 All errors propagate to the CLI with clear messages; multioutput helpers validate inputs strictly.
 
+
+### 33. MCP (Micro-Agent Communication Protocol) - Minimal Contract
+
+Lexon exposes tools over JSON-RPC 2.0 via stdio and WebSocket servers.
+
+- Servers:
+  - `lexc --mcp-stdio` reads requests from stdin and writes responses to stdout.
+  - `lexc --mcp-ws` starts a WebSocket server (addr from `LEXON_MCP_WS_ADDR`, default `127.0.0.1:8080`).
+
+- Methods (requests):
+  - `list_tools` → `{ "result": { "tools": [ { "name": string, "description"?: string, "meta"?: json } ] } }`
+  - `tool_info` → `{ "params": { "name": string } }` returns `{ "result": { "name": string, "meta": json } }`
+  - `tool_call` → `{ "params": { "name": string, "args"?: json } }`
+    - Validates `args` against optional JSON schema (per-tool).
+    - Enforces per-tool quotas and concurrency limits.
+    - Returns either `{ "result": { "name": string, "output": json } }` or `{ "error": { "code": int, "message": string } }`.
+  - `set_quota` → `{ "params": { "name": string, "allowed_calls": int } }` to set tool quotas (in‑process; persisted if memory_path configured).
+  - `rpc.cancel` → cooperative cancellation (stdio: flips an internal cancel flag; WS: acknowledges).
+  - `rpc.discover` → lists supported methods and protocol version.
+  - `ping` → `{ "result": { "pong": true } }`
+
+- Notifications (server → client):
+  - `heartbeat` every `LEXON_MCP_HEARTBEAT_MS` ms if set, both stdio and WS.
+  - `progress` (stdio and WS, opt‑in) when `LEXON_MCP_STREAM=1` during tool execution.
+  - `rpc.cancel` (WS): best‑effort cooperative — the server listens for `rpc.cancel` with the same `id` during execution and sets an internal cancel flag; if a tool completes too quickly, the cancel may arrive too late.
+
+- Security:
+  - Bearer auth (optional): set `LEXON_MCP_AUTH_BEARER=token`. In stdio, the client must send `{"method":"auth","params":{"bearer":"token"}}` before any other call (except `ping`/`rpc.discover`); in WS, the handshake requires header `Authorization: Bearer token`.
+  - TLS for WS (optional): set `LEXON_MCP_TLS_CERT` and `LEXON_MCP_TLS_KEY` (PEM). The WS server listens with TLS and validates Bearer during the handshake if configured.
+
+#### 33.1. TLS/WS smoke script
+
+Local test script (requires `websocat` if you want to see messages):
+
+```bash
+zsh scripts/mcp_ws_tls_smoke.sh
+```
+
+It does:
+- Generates a self‑signed cert in `tmp/certs/`.
+- Starts `--mcp-ws` with TLS and `LEXON_MCP_AUTH_BEARER=secret`.
+- Attempts the WS handshake with `websocat` sending `Authorization: Bearer secret`.
+- Shuts the server down.
+
+Useful environment variables:
+- `LEXON_MCP_WS_ADDR` (default `127.0.0.1:9443`)
+- `LEXON_MCP_AUTH_BEARER` (default `secret`)
+- `CERT_DIR` to change the certificates directory
+
+- JWT authentication (optional):
+  - `LEXON_MCP_AUTH_JWT_HS256=secret` enables HS256 JWT verification. For WS send `Authorization: Bearer <jwt>`. For stdio, send `{"method":"auth","params":{"jwt":"<jwt>"}}`.
+  - HS256 signature and `exp` are verified. Identity derives from `sub` (if present).
+
+- Per‑identity rate limits (stdio):
+  - `LEXON_MCP_RATE_PER_MIN=N` limits `list_tools`/`tool_info`/`tool_call` per identity per minute. Errors use code `-32015`.
+
+- Per‑identity ACL (stdio):
+  - `LEXON_MCP_ACL_FILE=acl.json` (JSON: `{"identity":["tool1","tool2"]}`) restricts `tool_call`. Errors use code `-32016`.
+
+- Client mTLS (WS, optional):
+  - `LEXON_MCP_TLS_CLIENT_CA=ca.pem` requires a client cert signed by that CA during the TLS handshake.
+
+- Security and governance:
+  - Permission profiles via `LEXON_MCP_PERMISSION_PROFILE`; unknown tools denied by default if allowlist set (`LEXON_MCP_ALLOWED_TOOLS=tool1,tool2`).
+  - Quotas: per‑tool `allowed_calls`/`used_calls` tracked in memory and optionally persisted to `${LEXON_MEMORY_PATH}/mcp_tools.json`.
+  - Concurrency: per‑tool `max_concurrency` in tool meta; enforced in stdio/WS paths.
+  - Timeouts: `LEXON_MCP_TOOL_TIMEOUT_MS` for individual tool execution; `LEXON_MCP_MSG_TIMEOUT_MS` for message send timeouts.
+
+### 34. Standard library (stdlib)
+
+Basic utility functions available in the runtime. Names accept dotted and flattened notation (e.g. `encoding.base64_encode` ≡ `encoding__base64_encode`). The dotted form is recommended.
+
+#### 34.1 encoding
+- `encoding.base64_encode(s: string) -> string`
+- `encoding.base64_decode(s: string) -> string`
+- `encoding.hex_encode(s: string) -> string`
+- `encoding.hex_decode(s: string) -> string`
+- `encoding.url_encode(s: string) -> string`
+- `encoding.url_decode(s: string) -> string`
+
+Example:
+```lexon
+let s = "Hello Lexon!";
+let b64 = encoding.base64_encode(s);
+let back = encoding.base64_decode(b64);  // "Hello Lexon!"
+```
+
+#### 34.2 strings
+-- `strings.length(s: string) -> int`            (counts characters, not bytes)
+- `strings.lower(s: string) -> string`
+- `strings.upper(s: string) -> string`
+- `strings.replace(s: string, from: string, to: string) -> string`
+- `strings.split(s: string, sep: string) -> [string]`
+- `strings.join(parts: [string], sep: string) -> string`
+- `strings.starts_with(s: string, prefix: string) -> bool`
+- `strings.substring(s: string, start: int, len?: int) -> string`
+
+Example:
+```lexon
+let parts = strings.split("a,b,c", ",");
+let out = strings.join(parts, "|");  // "a|b|c"
+```
+
+#### 34.3 math
+- `math.sqrt(x: number) -> float`
+- `math.pow(x: number, y: number) -> float`
+- `math.min(a: number, b: number) -> float`
+- `math.max(a: number, b: number) -> float`
+- `math.clamp(x: number, lo: number, hi: number) -> float`
+
+Notes:
+- Parameters accept `int | float | string` (parsed to `float` when applicable).
+- `clamp` returns `x` if `lo > hi`.
+
+Example:
+```lexon
+print(math.sqrt(9));         // 3
+print(math.pow(2, 3));       // 8
+print(math.clamp(10, 0, 7)); // 7
+```
+
+#### 34.4 regex
+- `regex.match(s: string, pattern: string) -> bool` (Regex Rust)
+- `regex.replace(s: string, pattern: string, repl: string) -> string`
+
+Example:
+```lexon
+print(regex.match("abc-123", "[0-9]+"));                 // true
+print(regex.replace("abc-123-xyz", "[0-9]+", "#"));      // "abc-#-xyz"
+```
+
+#### 34.5 time
+- `time.now_iso8601() -> string` (UTC, ISO‑8601)
+
+Example:
+```lexon
+let ts = time.now_iso8601(); // "2025-11-08T12:34:56Z"
+```
+
+#### 34.6 number
+- `number.format(n: number, decimals?: int=2) -> string`
+
+Example:
+```lexon
+print(number.format(3.14159, 3)); // "3.142"
+```
+
+#### 34.7 crypto
+- `crypto.sha256(s: string) -> string` (lowercase hex)
+
+Example:
+```lexon
+print(crypto.sha256("lexon")); // "2f7bdf33..."
+```
+
+- 34.8 json
+- `json.parse(text: string) -> json`
+- `json.to_string(value: json|any) -> string`
+- `json.get(obj: json|text, key: string) -> json|null`
+- `json.path(obj: json|text, pointer: string) -> json|null` (JSON Pointer `/a/b/0`)
+- `json.keys(obj: json|text) -> json` (array of strings)
+- `json.length(value: json|text|string) -> int` (arrays/objects/strings)
+- `json.index(arr: json|text, idx: int) -> json|null`
+- `json.as_string(value: json|any) -> string` (if value is a JSON string, returns raw string; otherwise serializes)
+
+Example:
+```lexon
+let j = json.parse("{\"a\":1,\"b\":[{\"t\":\"T1\"},{\"t\":\"T2\"}]}");
+print(json.length(json.get(j, "b"))); // 2
+print(json.to_string(json.path(j, "/b/1/t"))); // "T2"
+```
+
+#### 34.9 http
+- `http.get(url: string) -> string`
+- `http.get_json(url: string) -> json`
+- `http.request(method: string, url: string, body?: string|json, headers?: json) -> json`
+
+Behavior:
+- `http.request` returns an object:
+  - `status: int`
+  - `headers: json` (flat map)
+  - `body: string`
+  - `body_json?: json` (present when body parses as JSON)
+
+Configuration:
+- Requires `LEXON_ALLOW_HTTP=1`
+- Timeouts/retries: `LEXON_HTTP_TIMEOUT_MS` (default 10000), `LEXON_HTTP_RETRIES` (default 0)
+
+Example:
+```lexon
+// GET JSON
+let r = http.request("GET", "https://jsonplaceholder.typicode.com/todos/1");
+print(json.to_string(json.get(r, "status")));       // 200
+let data = json.get(r, "body_json");
+print(json.to_string(json.path(data, "/title")));
+
+// POST with headers and JSON body
+let res = http.request("POST",
+                       "https://postman-echo.com/post",
+                       { "hello": "lexon" },
+                       { "Content-Type": "application/json" });
+print(json.to_string(json.get(res, "status")));     // 200
+```
+
+### 35. Known limitations (RC)
+- Deeply nested string concatenations may hit lowering limits; prefer `strings.join([...], "")` or sequences of `let` + simple `+`.
+- Avoid stray top‑level literals: use assignments or calls.
+- String coercion for `+` exists at runtime; for strict control use `json.to_string`/`json.as_string`.
+
+### 36. Fuzzing (parser / HIR / LexIR)
+
+Lexon ships `cargo-fuzz` harnesses under `v1.0.0-rc.1/fuzz/`. Targets:
+
+| Target        | Description                                                      |
+|---------------|------------------------------------------------------------------|
+| `parser_cst`  | Feeds random UTF-8 into the tree-sitter parser (CST only).       |
+| `hir_builder` | Parses input and runs `build_hir_from_cst`.                      |
+| `hir_to_lexir`| Full CST → HIR → LexIR conversion (semantic/execution skipped).  |
+
+Prereqs:
+```bash
+rustup toolchain install nightly
+cargo install cargo-fuzz
+```
+
+Run from repo root:
+```bash
+cargo fuzz list
+cargo +nightly fuzz run parser_cst -- -max_total_time=60
+cargo +nightly fuzz run hir_builder -- -max_total_time=60
+cargo +nightly fuzz run hir_to_lexir -- -max_total_time=60
+```
+
+Artifacts/minimized cases land in `fuzz/artifacts/<target>/`; corpora live in `fuzz/corpus/<target>/`. When a crash is found, copy the minimized input into the corpus and consider adding a regression test or golden.
+
+- Configuration:
+  - Heartbeats: `LEXON_MCP_HEARTBEAT_MS=500` (ms).
+  - Streaming progress (stdio): `LEXON_MCP_STREAM=1`.
+  - WS addr: `LEXON_MCP_WS_ADDR=127.0.0.1:8080`.
+  - One‑shot WS (auto exit on idle): `LEXON_MCP_SERVER_ONESHOT=1`.
+  - Built‑in tools available: `emit_file`, `read_file`, `write_file`, `web.search` (plus any dynamically registered tools).
+
+- Error codes (indicative):
+  - `-32001` tool not allowed
+  - `-32002` quota exceeded
+  - `-32003` tool execution error
+  - `-32004` tool timeout
+  - `-32000` unauthorized
+  - `-32010` not allowed under permission profile
+  - `-32011` stdio tool execution error
+  - `-32012` schema validation error
+  - `-32013` concurrency limit exceeded
+
+Argument schema:
+- Full JSON Schema is supported if the tool `schema` is a JSON Schema object (compiled with `jsonschema`); detailed validation messages included.
+- Simplified support (basic-typed properties) as a fallback.
+Notes:
+- Stdio cooperative cancellation is best‑effort: the server sets a cancel flag and tools periodically check it; long pure‑CPU operations may complete before cancellation.
+- WS: heartbeats implemented; streaming progress for WS may be added in a future increment.

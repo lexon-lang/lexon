@@ -13,3 +13,6 @@
   - Schema and PII gates configurable; optional blocking.
 - Reproducibility
   - Deterministic runs default in CI (simulated providers, LEXON_SEED=0).
+
+
+

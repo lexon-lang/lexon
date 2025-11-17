@@ -1,0 +1,7 @@
+📄 Vector Memory System initialized with SQLite backend
+[TRAIT WARN] impl Greeter.greet param 0 type 'int' != trait 'string'
+Hello, 
+
+
+
+

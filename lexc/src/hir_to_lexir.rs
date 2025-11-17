@@ -122,6 +122,12 @@ struct ConversionContext {
     generic_schemas: HashMap<String, HirSchemaDefinition>,
     /// Generic function definitions available for instantiation
     generic_functions: HashMap<String, HirFunctionDefinition>,
+    /// Current module prefix (normalized with __), empty means root
+    module_prefix: String,
+    /// Module alias map: alias -> full module path with '::' (e.g., "math" -> "lib::math")
+    module_aliases: HashMap<String, String>,
+    /// Item alias map: alias -> full item path with '::' (e.g., "dbl" -> "lib::math::double")
+    item_aliases: HashMap<String, String>,
 }
 
 impl ConversionContext {
@@ -137,6 +143,47 @@ impl ConversionContext {
             program: LexProgram::new(),
             generic_schemas: HashMap::new(),
             generic_functions: HashMap::new(),
+            module_prefix: String::new(),
+            module_aliases: HashMap::new(),
+            item_aliases: HashMap::new(),
+        }
+    }
+
+    /// Expand leading module alias in a qualified name, if present.
+    /// Examples:
+    ///  - "math::double" with alias math="lib::math" -> "lib::math::double"
+    ///  - "User" or non-qualified names remain unchanged
+    fn expand_module_aliases(&self, qualified: &str) -> String {
+        let parts: Vec<&str> = qualified.split("::").collect();
+        if let Some(first) = parts.first().cloned() {
+            if let Some(full) = self.module_aliases.get(first) {
+                // Replace first segment with full path segments
+                let mut expanded: Vec<String> = full.split("::").map(|s| s.to_string()).collect();
+                if parts.len() > 1 {
+                    expanded.extend(parts.iter().skip(1).map(|s| s.to_string()));
+                }
+                return expanded.join("::");
+            }
+        }
+        qualified.to_string()
+    }
+
+    /// Expand item alias (unqualified names) to full path if present.
+    /// Example: "dbl" with alias "dbl"="lib::math::double" -> "lib::math::double"
+    fn expand_item_alias(&self, name: &str) -> String {
+        if let Some(full) = self.item_aliases.get(name) {
+            full.clone()
+        } else {
+            name.to_string()
+        }
+    }
+
+    /// Expand either module or item alias depending on the form
+    fn expand_any_alias(&self, name: &str) -> String {
+        if name.contains("::") {
+            self.expand_module_aliases(name)
+        } else {
+            self.expand_item_alias(name)
         }
     }
 
@@ -317,28 +364,72 @@ impl ConversionContext {
             }
             // 📞 Method call operations
             HirNode::MethodCall(method_call) => {
-                // Convert arguments to LexExpression list
-                let mut args_exprs = Vec::new();
-                for arg in &method_call.args {
-                    let val_ref = match arg {
-                        HirNode::Identifier(var_name) => ValueRef::Named(var_name.clone()),
-                        _ => self.convert_node_to_value_ref(arg)?,
-                    };
-                    args_exprs.push(LexExpression::Value(val_ref));
-                }
-                let temp_id = self.temp_gen.next();
-                let instr = LexInstruction::Call {
-                    result: Some(ValueRef::Temp(temp_id.clone())),
-                    function: format!("{}__{}", method_call.target, method_call.method),
-                    args: args_exprs,
+                // Heuristic: static if receiver is identifier starting uppercase or builtin struct/enum
+                let is_type = match &*method_call.target {
+                    HirNode::Identifier(name) => {
+                        let first = name.chars().next();
+                        let stdmods = [
+                            "struct", "enum", "encoding", "strings", "math", "regex", "time",
+                            "number", "crypto", "json",
+                        ];
+                        stdmods.contains(&name.as_str())
+                            || first.map(|c| c.is_ascii_uppercase()).unwrap_or(false)
+                    }
+                    _ => false,
                 };
-                self.program.add_instruction(instr);
+
+                let temp_id = self.temp_gen.next();
+                if is_type {
+                    let target_name = if let HirNode::Identifier(name) = &*method_call.target {
+                        name.clone()
+                    } else {
+                        String::new()
+                    };
+                    let target_expanded = self.expand_any_alias(&target_name);
+                    let target_norm = target_expanded.replace("::", "__").replace('.', "__");
+                    let mut args_exprs = Vec::new();
+                    for arg in &method_call.args {
+                        let val_ref = match arg {
+                            HirNode::Identifier(var_name) => ValueRef::Named(var_name.clone()),
+                            _ => self.convert_node_to_value_ref(arg)?,
+                        };
+                        args_exprs.push(LexExpression::Value(val_ref));
+                    }
+                    let instr = LexInstruction::Call {
+                        result: Some(ValueRef::Temp(temp_id.clone())),
+                        function: format!("{}__{}", target_norm, method_call.method),
+                        args: args_exprs,
+                    };
+                    self.program.add_instruction(instr);
+                } else {
+                    // Instance dispatch via runtime helper: method.call(receiver, method, ...args)
+                    let mut args_exprs = Vec::new();
+                    // receiver expression
+                    let recv = self.convert_node_to_value_ref(&method_call.target)?;
+                    args_exprs.push(LexExpression::Value(recv));
+                    // method name
+                    args_exprs.push(LexExpression::Value(ValueRef::Literal(LexLiteral::String(
+                        method_call.method.clone(),
+                    ))));
+                    // remaining args
+                    for arg in &method_call.args {
+                        let v = self.convert_node_to_value_ref(arg)?;
+                        args_exprs.push(LexExpression::Value(v));
+                    }
+                    self.program.add_instruction(LexInstruction::Call {
+                        result: Some(ValueRef::Temp(temp_id.clone())),
+                        function: "method.call".to_string(),
+                        args: args_exprs,
+                    });
+                }
                 Ok(ValueRef::Temp(temp_id))
             }
             // 🔧 Function call operations with generic instantiation support
             HirNode::FunctionCall(func_call) => {
                 // Detect special memory functions
-                match func_call.function.as_str() {
+                let fn_name_expanded = self.expand_any_alias(&func_call.function);
+                let fn_name_norm = fn_name_expanded.replace("::", "__").replace('.', "__");
+                match fn_name_norm.as_str() {
                     "memory_store" => {
                         // Convert arguments for memory_store
                         if func_call.args.len() < 2 {
@@ -414,10 +505,9 @@ impl ConversionContext {
                     _ => {
                         // Handle generic function calls with potential instantiation
                         let specialized_name = if let Some(generic_func) =
-                            self.generic_functions.get(&func_call.function)
+                            self.generic_functions.get(&fn_name_norm)
                         {
-                            let spec_name =
-                                format!("{}_{}", func_call.function, self.temp_gen.next().0);
+                            let spec_name = format!("{}_{}", fn_name_norm, self.temp_gen.next().0);
 
                             // Create a monomorphized version
                             let mono = generic_func.clone();
@@ -433,7 +523,7 @@ impl ConversionContext {
                             }
                             spec_name
                         } else {
-                            func_call.function.clone()
+                            fn_name_norm.clone()
                         };
 
                         // Convert arguments
@@ -1214,9 +1304,11 @@ impl ConversionContext {
                         };
                         args_exprs.push(LexExpression::Value(val_ref));
                     }
+                    let fn_name_expanded = self.expand_any_alias(&func_call.function);
+                    let fn_name_norm = fn_name_expanded.replace("::", "__").replace('.', "__");
                     let call_instr = LexInstruction::Call {
                         result: Some(ValueRef::Temp(temp_id)),
-                        function: func_call.function.clone(),
+                        function: fn_name_norm,
                         args: args_exprs,
                     };
                     body_instrs.push(call_instr);
@@ -1273,18 +1365,218 @@ impl ConversionContext {
 
         // Convert the function body
         let mut body = Vec::new();
+
+        // Helper: convert an expression node into a LexExpression while ensuring
+        // any required instructions (e.g., function/method calls) are appended to this local body
+        fn node_to_expr_local(
+            ctx: &mut ConversionContext,
+            node: &HirNode,
+            body: &mut Vec<LexInstruction>,
+        ) -> Result<LexExpression> {
+            match node {
+                HirNode::Literal(lit) => {
+                    let lex_lit = ctx.convert_literal(lit)?;
+                    Ok(LexExpression::Value(ValueRef::Literal(lex_lit)))
+                }
+                HirNode::Identifier(name) => {
+                    Ok(LexExpression::Value(ValueRef::Named(name.clone())))
+                }
+                HirNode::Binary(bin) => {
+                    use crate::lexir::LexBinaryOperator as LB;
+                    let op = match bin.operator.as_str() {
+                        "+" => LB::Add,
+                        "-" => LB::Subtract,
+                        "*" => LB::Multiply,
+                        "/" => LB::Divide,
+                        ">" => LB::GreaterThan,
+                        "<" => LB::LessThan,
+                        ">=" => LB::GreaterEqual,
+                        "<=" => LB::LessEqual,
+                        "==" => LB::Equal,
+                        "!=" => LB::NotEqual,
+                        "&&" => LB::And,
+                        "||" => LB::Or,
+                        other => {
+                            return Err(HirToLexIrError::UnsupportedNode(format!(
+                                "Unsupported binary operator in function: {}",
+                                other
+                            )))
+                        }
+                    };
+                    let left_expr = node_to_expr_local(ctx, &bin.left, body)?;
+                    let right_expr = node_to_expr_local(ctx, &bin.right, body)?;
+                    Ok(LexExpression::BinaryOp {
+                        operator: op,
+                        left: Box::new(left_expr),
+                        right: Box::new(right_expr),
+                    })
+                }
+                HirNode::FunctionCall(func_call) => {
+                    // Build args
+                    let fn_name_expanded = ctx.expand_any_alias(&func_call.function);
+                    let fn_name_norm = fn_name_expanded.replace("::", "__").replace('.', "__");
+                    let specialized_name = if let Some(generic_func) =
+                        ctx.generic_functions.get(&func_call.function)
+                    {
+                        let spec_name = format!("{}_{}", fn_name_norm, ctx.temp_gen.next().0);
+                        let mono = generic_func.clone();
+                        if !ctx.generic_functions.contains_key(&spec_name) {
+                            ctx.generic_functions
+                                .insert(spec_name.clone(), mono.clone());
+                            ctx.convert_function_definition(&mono)?;
+                        }
+                        spec_name
+                    } else {
+                        fn_name_norm.clone()
+                    };
+
+                    let mut args_exprs = Vec::new();
+                    for arg in &func_call.args {
+                        // Convert nested values to expressions (no global temps)
+                        let e = node_to_expr_local(ctx, arg, body)?;
+                        args_exprs.push(e);
+                    }
+                    let temp_id = ctx.temp_gen.next();
+                    body.push(LexInstruction::Call {
+                        result: Some(ValueRef::Temp(temp_id.clone())),
+                        function: specialized_name,
+                        args: args_exprs,
+                    });
+                    Ok(LexExpression::Value(ValueRef::Temp(temp_id)))
+                }
+                HirNode::MethodCall(method_call) => {
+                    let is_type = match &*method_call.target {
+                        HirNode::Identifier(name) => {
+                            let first = name.chars().next();
+                            let stdmods = [
+                                "struct", "enum", "encoding", "strings", "math", "regex", "time",
+                                "number", "crypto", "json",
+                            ];
+                            stdmods.contains(&name.as_str())
+                                || first.map(|c| c.is_ascii_uppercase()).unwrap_or(false)
+                        }
+                        _ => false,
+                    };
+                    let temp_id = ctx.temp_gen.next();
+                    if is_type {
+                        let target_name = if let HirNode::Identifier(name) = &*method_call.target {
+                            name.clone()
+                        } else {
+                            String::new()
+                        };
+                        let target_expanded = ctx.expand_any_alias(&target_name);
+                        let target_norm = target_expanded.replace("::", "__").replace('.', "__");
+                        let mut args_exprs = Vec::new();
+                        for arg in &method_call.args {
+                            let e = node_to_expr_local(ctx, arg, body)?;
+                            args_exprs.push(e);
+                        }
+                        body.push(LexInstruction::Call {
+                            result: Some(ValueRef::Temp(temp_id.clone())),
+                            function: format!("{}__{}", target_norm, method_call.method),
+                            args: args_exprs,
+                        });
+                    } else {
+                        // Instance call
+                        let mut args_exprs = Vec::new();
+                        let recv_expr = node_to_expr_local(ctx, &method_call.target, body)?;
+                        args_exprs.push(recv_expr);
+                        args_exprs.push(LexExpression::Value(ValueRef::Literal(
+                            LexLiteral::String(method_call.method.clone()),
+                        )));
+                        for arg in &method_call.args {
+                            let e = node_to_expr_local(ctx, arg, body)?;
+                            args_exprs.push(e);
+                        }
+                        body.push(LexInstruction::Call {
+                            result: Some(ValueRef::Temp(temp_id.clone())),
+                            function: "method.call".to_string(),
+                            args: args_exprs,
+                        });
+                    }
+                    Ok(LexExpression::Value(ValueRef::Temp(temp_id)))
+                }
+                _ => {
+                    // Fallback: use existing converter but beware it may emit global instructions.
+                    // This handles rare nodes; for our OO smoke return path we cover the common ones above.
+                    let v = ctx.convert_node_to_value_ref(node)?;
+                    Ok(LexExpression::Value(v))
+                }
+            }
+        }
+
+        // Helper: push a statement into a local block body
+        fn push_stmt_local(
+            ctx: &mut ConversionContext,
+            stmt: &HirNode,
+            block: &mut Vec<LexInstruction>,
+        ) -> Result<()> {
+            match stmt {
+                HirNode::VariableDeclaration(var_decl) => {
+                    let init_expr = node_to_expr_local(ctx, &var_decl.value, block)?;
+                    block.push(LexInstruction::Assign {
+                        result: ValueRef::Named(var_decl.name.clone()),
+                        expr: init_expr,
+                    });
+                    Ok(())
+                }
+                HirNode::Assignment(assignment) => {
+                    let right_expr = node_to_expr_local(ctx, &assignment.right, block)?;
+                    block.push(LexInstruction::Assign {
+                        result: ValueRef::Named(assignment.left.clone()),
+                        expr: right_expr,
+                    });
+                    Ok(())
+                }
+                HirNode::FunctionCall(_) | HirNode::MethodCall(_) | HirNode::Binary(_) => {
+                    // Ensure any necessary call instructions are appended
+                    let _ = node_to_expr_local(ctx, stmt, block)?;
+                    Ok(())
+                }
+                HirNode::If(inner_if) => {
+                    let cond_expr = node_to_expr_local(ctx, &inner_if.condition, block)?;
+                    let mut then_block: Vec<LexInstruction> = Vec::new();
+                    for s in &inner_if.then_body {
+                        push_stmt_local(ctx, s, &mut then_block)?;
+                    }
+                    let else_block = if let Some(else_stmts) = &inner_if.else_body {
+                        let mut ev: Vec<LexInstruction> = Vec::new();
+                        for s in else_stmts {
+                            push_stmt_local(ctx, s, &mut ev)?;
+                        }
+                        Some(ev)
+                    } else {
+                        None
+                    };
+                    block.push(LexInstruction::If {
+                        condition: cond_expr,
+                        then_block,
+                        else_block,
+                    });
+                    Ok(())
+                }
+                _ => Ok(()),
+            }
+        }
         for statement in &func_def.body {
             match statement {
+                // Allow expression-bodied functions: literal → return literal
+                HirNode::Literal(_) => {
+                    let val = self.convert_node_to_value_ref(statement)?;
+                    body.push(LexInstruction::Return {
+                        expr: Some(LexExpression::Value(val)),
+                    });
+                }
                 HirNode::VariableDeclaration(var_decl) => {
                     // Declaration with initial value
                     let _instruction = self.convert_variable_declaration(var_decl)?;
                     // Skip adding to program - will be added to function body
 
-                    // Evaluate and assign the variable's initial value (includes ask expressions and literals)
+                    // Evaluate and assign the variable's initial value (ensure calls are appended to local body)
                     let init_expr = match var_decl.value.as_ref() {
                         HirNode::Binary(bin_expr) => {
-                            let left_val = self.convert_node_to_value_ref(&bin_expr.left)?;
-                            let right_val = self.convert_node_to_value_ref(&bin_expr.right)?;
+                            let left_expr = node_to_expr_local(self, &bin_expr.left, &mut body)?;
+                            let right_expr = node_to_expr_local(self, &bin_expr.right, &mut body)?;
                             use crate::lexir::LexBinaryOperator as LB;
                             let operator = match bin_expr.operator.as_str() {
                                 "+" => LB::Add,
@@ -1308,14 +1600,11 @@ impl ConversionContext {
                             };
                             LexExpression::BinaryOp {
                                 operator,
-                                left: Box::new(LexExpression::Value(left_val)),
-                                right: Box::new(LexExpression::Value(right_val)),
+                                left: Box::new(left_expr),
+                                right: Box::new(right_expr),
                             }
                         }
-                        _ => {
-                            let init_ref = self.convert_node_to_value_ref(&var_decl.value)?;
-                            LexExpression::Value(init_ref)
-                        }
+                        _ => node_to_expr_local(self, &var_decl.value, &mut body)?,
                     };
                     let assign_instr = LexInstruction::Assign {
                         result: ValueRef::Named(var_decl.name.clone()),
@@ -1358,14 +1647,19 @@ impl ConversionContext {
                     };
                     body.push(assign_instr);
                 }
-                HirNode::FunctionCall(_) => {
-                    let temp_id = self.temp_gen.next();
+                // Function/method calls as final expression: return their value
+                HirNode::FunctionCall(_) | HirNode::MethodCall(_) => {
                     let value_ref = self.convert_node_to_value_ref(statement)?;
-                    let instr = LexInstruction::Assign {
-                        result: ValueRef::Temp(temp_id),
-                        expr: LexExpression::Value(value_ref),
-                    };
-                    body.push(instr);
+                    body.push(LexInstruction::Return {
+                        expr: Some(LexExpression::Value(value_ref)),
+                    });
+                }
+                // Binary expressions as final expression: return value
+                HirNode::Binary(_) => {
+                    let value_ref = self.convert_node_to_value_ref(statement)?;
+                    body.push(LexInstruction::Return {
+                        expr: Some(LexExpression::Value(value_ref)),
+                    });
                 }
                 HirNode::While(while_node) => {
                     let instr = self.convert_while(while_node)?;
@@ -1375,11 +1669,32 @@ impl ConversionContext {
                 HirNode::Continue => body.push(LexInstruction::Continue),
                 HirNode::Return(return_node) => {
                     let return_expr = if let Some(expr) = &return_node.expression {
-                        Some(LexExpression::Value(self.convert_node_to_value_ref(expr)?))
+                        Some(node_to_expr_local(self, expr, &mut body)?)
                     } else {
                         None
                     };
                     body.push(LexInstruction::Return { expr: return_expr });
+                }
+                HirNode::If(if_node) => {
+                    let cond_expr = node_to_expr_local(self, &if_node.condition, &mut body)?;
+                    let mut then_block: Vec<LexInstruction> = Vec::new();
+                    for s in &if_node.then_body {
+                        push_stmt_local(self, s, &mut then_block)?;
+                    }
+                    let else_block = if let Some(else_stmts) = &if_node.else_body {
+                        let mut ev: Vec<LexInstruction> = Vec::new();
+                        for s in else_stmts {
+                            push_stmt_local(self, s, &mut ev)?;
+                        }
+                        Some(ev)
+                    } else {
+                        None
+                    };
+                    body.push(LexInstruction::If {
+                        condition: cond_expr,
+                        then_block,
+                        else_block,
+                    });
                 }
                 // Other statement types would go here
                 _ => {
@@ -1398,8 +1713,14 @@ impl ConversionContext {
             .map(|p| (p.name.clone(), self.parse_lex_type(&p.type_name)))
             .collect();
 
+        let base_name = func_def.name.clone();
+        let full_name = if self.module_prefix.is_empty() {
+            base_name
+        } else {
+            format!("{}__{}", self.module_prefix, base_name)
+        };
         self.program.add_function(LexFunction {
-            name: func_def.name.clone(),
+            name: full_name,
             return_type,
             parameters,
             body,
@@ -1591,9 +1912,11 @@ impl ConversionContext {
                             args.push(LexExpression::Value(arg_ref));
                         }
 
+                        let fn_name_expanded = self.expand_any_alias(&func_call.function);
+                        let fn_name_norm = fn_name_expanded.replace("::", "__").replace('.', "__");
                         let call_instr = LexInstruction::Call {
                             result: None, // Do not assign a result in the match arm body
-                            function: func_call.function.clone(),
+                            function: fn_name_norm,
                             args,
                         };
                         body_instrs.push(call_instr);
@@ -1628,10 +1951,59 @@ impl ConversionContext {
 /// Converts a set of HIR nodes into a LexIR program
 pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
     let mut context = ConversionContext::new();
+    use std::collections::HashMap as StdHashMap;
+    #[derive(Clone)]
+    struct TraitMethodSig {
+        name: String,
+        param_types: Vec<String>,
+        return_type: Option<String>,
+    }
+    let mut trait_sigs: StdHashMap<String, Vec<TraitMethodSig>> = StdHashMap::new();
+    let enforce = std::env::var("LEXON_TRAIT_ENFORCE")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(true);
 
+    // Collect trait signatures first
+    for node in hir_nodes {
+        if let HirNode::TraitDefinition(tr) = node {
+            let mut sigs = Vec::new();
+            for m in &tr.methods {
+                let pts: Vec<String> = m.parameters.iter().map(|p| p.type_name.clone()).collect();
+                sigs.push(TraitMethodSig {
+                    name: m.name.clone(),
+                    param_types: pts,
+                    return_type: m.return_type.clone(),
+                });
+            }
+            trait_sigs.insert(tr.name.clone(), sigs);
+        }
+    }
+
+    // Pre-pass: collect module and item aliases from imports
+    for node in hir_nodes {
+        if let HirNode::ImportDeclaration(import) = node {
+            if let Some(alias) = &import.alias {
+                context
+                    .module_aliases
+                    .insert(alias.clone(), import.path.join("::"));
+            }
+            if !import.items.is_empty() {
+                let base = import.path.join("::");
+                for (name, alias) in &import.items {
+                    let key = alias.clone().unwrap_or_else(|| name.clone());
+                    context
+                        .item_aliases
+                        .insert(key, format!("{}::{}", base, name));
+                }
+            }
+        }
+    }
     // First process schema and function definitions
     for node in hir_nodes {
         match node {
+            HirNode::ModuleDeclaration(md) => {
+                context.module_prefix = md.path.join("__");
+            }
             HirNode::SchemaDefinition(schema_def) => {
                 if schema_def.type_parameters.is_empty() {
                     context.convert_schema_definition(schema_def)?;
@@ -1651,10 +2023,82 @@ pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
                 }
             }
             HirNode::ImplBlock(impl_block) => {
+                // Validate against trait of same name if present
+                if let Some(required) = trait_sigs.get(&impl_block.target) {
+                    for req in required {
+                        match impl_block.methods.iter().find(|m| m.name == req.name) {
+                            Some(m) => {
+                                if m.parameters.len() != req.param_types.len() {
+                                    let msg = format!(
+                                        "impl {}.{} has {} params but trait requires {}",
+                                        impl_block.target,
+                                        req.name,
+                                        m.parameters.len(),
+                                        req.param_types.len()
+                                    );
+                                    if enforce {
+                                        return Err(HirToLexIrError::InvalidExpression(msg));
+                                    } else {
+                                        println!("[TRAIT WARN] {}", msg);
+                                    }
+                                }
+                                // Validate parameter types when both sides specify type names
+                                for (i, p) in m.parameters.iter().enumerate() {
+                                    if let Some(req_ty) = req.param_types.get(i) {
+                                        let got_ty = &p.type_name;
+                                        if got_ty != req_ty {
+                                            let msg = format!(
+                                                "impl {}.{} param {} type '{}' != trait '{}'",
+                                                impl_block.target, req.name, i, got_ty, req_ty
+                                            );
+                                            if enforce {
+                                                return Err(HirToLexIrError::InvalidExpression(
+                                                    msg,
+                                                ));
+                                            } else {
+                                                println!("[TRAIT WARN] {}", msg);
+                                            }
+                                        }
+                                    }
+                                }
+                                // Validate return type when both sides specify
+                                if let (Some(req_ret), Some(got_ret)) =
+                                    (req.return_type.clone(), m.return_type.clone())
+                                {
+                                    if req_ret != got_ret {
+                                        let msg = format!(
+                                            "impl {}.{} return '{}' != trait '{}'",
+                                            impl_block.target, req.name, got_ret, req_ret
+                                        );
+                                        if enforce {
+                                            return Err(HirToLexIrError::InvalidExpression(msg));
+                                        } else {
+                                            println!("[TRAIT WARN] {}", msg);
+                                        }
+                                    }
+                                }
+                            }
+                            None => {
+                                let msg = format!(
+                                    "impl {} missing method required by trait: {}",
+                                    impl_block.target, req.name
+                                );
+                                if enforce {
+                                    return Err(HirToLexIrError::InvalidExpression(msg));
+                                } else {
+                                    println!("[TRAIT WARN] {}", msg);
+                                }
+                            }
+                        }
+                    }
+                }
                 // Simple monomorphization: convert methods to free functions <Target>__<method>
                 for method in &impl_block.methods {
                     let mut mono_method = method.clone();
-                    mono_method.name = format!("{}__{}", impl_block.target, method.name);
+                    // Support module-like prefix in target
+                    let target_expanded = context.expand_module_aliases(&impl_block.target);
+                    let target_norm = target_expanded.replace("::", "__").replace('.', "__");
+                    mono_method.name = format!("{}__{}", target_norm, method.name);
                     context.convert_function_definition(&mono_method)?;
                 }
             }
@@ -1668,6 +2112,9 @@ pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
     // Then process variable declarations and other top-level instructions
     for node in hir_nodes {
         match node {
+            HirNode::ModuleDeclaration(md) => {
+                context.module_prefix = md.path.join("__");
+            }
             HirNode::VariableDeclaration(_var_decl) => {
                 // Declaration with initial value
                 context.convert_node(node)?;
@@ -1707,9 +2154,7 @@ pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
             HirNode::ForIn(for_in) => {
                 context.convert_for_in(for_in)?;
             }
-            HirNode::ModuleDeclaration(_) => {
-                // Ignored in LexIR conversion: only affect the name resolver.
-            }
+            // removed duplicate unreachable ModuleDeclaration arm to fix warning
             HirNode::TraitDefinition(_) | HirNode::ImplBlock(_) => {
                 // already handled or ignored
             }
@@ -1807,11 +2252,48 @@ pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
                 };
                 context.program.add_instruction(assign_instr);
             }
+            // Allow harmless top-level expressions by evaluating into a temp
+            // Accept harmless top-level literals and identifiers
+            HirNode::Literal(_) | HirNode::Identifier(_) => {
+                let temp_id = context.temp_gen.next();
+                let val = context.convert_node_to_value_ref(&node)?;
+                let assign_instr = LexInstruction::Assign {
+                    result: ValueRef::Temp(temp_id),
+                    expr: LexExpression::Value(val),
+                };
+                context.program.add_instruction(assign_instr);
+            }
             _ => {
                 return Err(HirToLexIrError::UnsupportedNode(format!(
                     "Unsupported top-level node: {:?}",
                     node
                 )))
+            }
+        }
+    }
+
+    // Post-pass: rewrite function calls using item aliases into fully qualified flattened names
+    if !context.item_aliases.is_empty() {
+        // Rewrite top-level instructions
+        for instr in &mut context.program.instructions {
+            if let LexInstruction::Call { function, .. } = instr {
+                if !function.contains("__") {
+                    if let Some(full) = context.item_aliases.get(function) {
+                        *function = full.replace("::", "__").replace('.', "__");
+                    }
+                }
+            }
+        }
+        // Rewrite inside function bodies
+        for (_name, func) in &mut context.program.functions {
+            for instr in &mut func.body {
+                if let LexInstruction::Call { function, .. } = instr {
+                    if !function.contains("__") {
+                        if let Some(full) = context.item_aliases.get(function) {
+                            *function = full.replace("::", "__").replace('.', "__");
+                        }
+                    }
+                }
             }
         }
     }

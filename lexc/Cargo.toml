@@ -29,6 +29,11 @@ libloading = "0.8"
 base64 = "0.22"
 futures-util = "0.3"
 tokio-tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
+tokio-rustls = "0.24"
+rustls-pemfile = "1.0"
+hmac = "0.12"
+sha2 = "0.10"
+chrono = { version = "0.4", default-features = true }
 ## Removed unused deps (validated via cargo-udeps)
 # redis = { version = "0.23", features = ["tokio-comp"] }
 # futures = "0.3"

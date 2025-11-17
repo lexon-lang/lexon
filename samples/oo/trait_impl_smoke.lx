@@ -1,0 +1,13 @@
+// Trait/impl method call smoke
+trait Greeter {
+  greet(name: string) -> string;
+}
+
+impl Simple {
+  fn greet(n: string) -> string {
+    return "Hello, " + n;
+  }
+}
+
+let msg = Simple.greet("World");
+print(msg);

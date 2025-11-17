@@ -1,0 +1,35 @@
+// samples/web/http_request_demo.lx
+// Demo of native http.request() mapping to JSON and extracting fields
+
+print("=== HTTP REQUEST DEMO ===");
+
+// 1) Simple GET returning JSON (httpbin)
+let r1 = http__request("GET", "https://jsonplaceholder.typicode.com/todos/1");
+print("GET /json status:");
+print(json__to_string(json__get(r1, "status")));
+let body1 = json__get(r1, "body_json");
+print("Top-level keys:");
+print(json__to_string(json__keys(body1)));
+print("Title via path (using /title if present):");
+print(json__to_string(json__path(body1, "/title")));
+
+// 2) GET returning text/html → access 'body' string
+let r2 = http__request("GET", "https://example.com/");
+print("GET /html status:");
+print(json__to_string(json__get(r2, "status")));
+let html = json__get(r2, "body");
+print("HTML length:");
+print(strings__length(json__as_string(html)));
+
+// 3) POST with JSON body and headers
+let headers = { "Content-Type": "application/json" };
+let r3 = http__request("POST", "https://postman-echo.com/post", { "hello": "lexon" }, headers);
+print("POST /post status:");
+print(json__to_string(json__get(r3, "status")));
+let body3 = json__get(r3, "body_json");
+print("Echoed JSON keys:");
+print(json__to_string(json__keys(json__get(body3, "json"))));
+
+print("=== END DEMO ===");
+
+

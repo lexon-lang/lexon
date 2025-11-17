@@ -24,7 +24,7 @@ let actions = ask_safe {
   user: "From these notes, produce a bullet list of action items with owners";
   model: "gpt-4";
   validation: "basic";
-  confidence_threshold: 0.8;
+  confidence_threshold: 0.6;
 };
 
 // Artifacts

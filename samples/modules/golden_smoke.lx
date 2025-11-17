@@ -1,0 +1,8 @@
+module app.demo;
+
+import lib.math;
+
+// Snapshot: expects golden/modules_demo.txt to equal Debug value of Integer(6)
+assert_snapshot("modules_demo", lib__math__double(3));
+
+

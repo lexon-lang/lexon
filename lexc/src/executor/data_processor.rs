@@ -177,7 +177,9 @@ impl Dataset {
                 let mut df_mut = df.clone();
                 ParquetWriter::new(&mut file)
                     .finish(&mut df_mut)
-                    .map_err(|e| ExecutorError::DataError(format!("Error writing Parquet: {}", e)))?;
+                    .map_err(|e| {
+                        ExecutorError::DataError(format!("Error writing Parquet: {}", e))
+                    })?;
             }
             "json" => {
                 // Serialize to JSON lines (NDJSON, one JSON object per line)
@@ -228,8 +230,9 @@ impl Dataset {
 
     /// Loads a parquet file into a Dataset (lazy)
     pub fn load_parquet(&self, name: &str, path: &str) -> Result<Dataset> {
-        let lf = LazyFrame::scan_parquet(path, Default::default())
-            .map_err(|e| ExecutorError::DataError(format!("Error scanning parquet {}: {}", path, e)))?;
+        let lf = LazyFrame::scan_parquet(path, Default::default()).map_err(|e| {
+            ExecutorError::DataError(format!("Error scanning parquet {}: {}", path, e))
+        })?;
         Ok(Dataset::new(name, lf))
     }
 
@@ -453,8 +456,9 @@ pub struct DataStream {
 impl DataProcessor {
     /// Loads a parquet file into a Dataset (lazy)
     pub fn load_parquet(&self, name: &str, path: &str) -> Result<Dataset> {
-        let lf = LazyFrame::scan_parquet(path, Default::default())
-            .map_err(|e| ExecutorError::DataError(format!("Error scanning parquet {}: {}", path, e)))?;
+        let lf = LazyFrame::scan_parquet(path, Default::default()).map_err(|e| {
+            ExecutorError::DataError(format!("Error scanning parquet {}: {}", path, e))
+        })?;
         Ok(Dataset::new(name, lf))
     }
 }

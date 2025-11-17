@@ -1,0 +1,9 @@
+// Free function returning concatenation
+fn greet(n: string) -> string {
+  return "Hello, " + n;
+}
+
+let msg = greet("World");
+print(msg);
+
+

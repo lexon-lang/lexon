@@ -62,6 +62,7 @@ jobs:
             samples/validation/schema_file_smoke.lx
             samples/routing/metrics_tick_only.lx
             samples/routing/metrics.lx
+            samples/oo/struct_enum_smoke.lx
           )
 
           failures=0
@@ -83,6 +84,23 @@ jobs:
             exit 1
           fi
 
+      - name: MCP WS progress check
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Start WS server in background with stream+heartbeat
+          LEXON_MCP_WS_ADDR=127.0.0.1:8094 LEXON_MCP_HEARTBEAT_MS=100 LEXON_MCP_STREAM=1 ./target/debug/lexc --mcp-ws &>/tmp/lexon_ws_ci.log &
+          srv=$!
+          sleep 0.3
+          # Run the WS client against it
+          out=$(WS_URL=ws://127.0.0.1:8094 cargo run -q -p lexc --bin ws_client)
+          echo "$out"
+          # Assert we saw at least one progress and a final result
+          echo "$out" | grep -q '"method":"progress"' || { echo "No WS progress event seen"; kill $srv || true; exit 1; }
+          echo "$out" | grep -q '"result":{"name":"web.search"' || { echo "No WS result seen"; kill $srv || true; exit 1; }
+          kill $srv || true
+          wait $srv 2>/dev/null || true
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,6 +108,15 @@ jobs:
           name: rc1-smokes-logs
           path: ${{ steps.smokes.outputs.logdir }}
           if-no-files-found: ignore
+
+      - name: MCP WS TLS/mTLS smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          # TLS (self-signed) handshake and ready banner check (script includes timeout)
+          zsh scripts/mcp_ws_tls_smoke.sh
+          # mTLS (client cert) handshake using openssl s_client (script includes timeout)
+          zsh scripts/mcp_ws_mtls_smoke.sh
 
   golden:
     strategy:
@@ -158,6 +185,19 @@ jobs:
           MAP[golden/rag/hybrid_llm_rerank.txt]=samples/rag/hybrid_llm_rerank.lx
           MAP[golden/rag/hybrid_all_smoke.txt]=samples/rag/hybrid_all_smoke.lx
           MAP[golden/rag/fusion_citations_smoke.txt]=samples/rag/fusion_citations_smoke.lx
+          MAP[golden/oo/struct_enum_smoke.txt]=samples/oo/struct_enum_smoke.lx
+          MAP[golden/lang/top_level_temps.txt]=samples/lang/top_level_temps.lx
+          MAP[golden/oo/impl_flatten_smoke.txt]=samples/oo/impl_flatten_smoke.lx
+          MAP[golden/oo/instance_method_smoke.txt]=samples/oo/instance_method_smoke.lx
+          MAP[golden/oo/module_ns_smoke.txt]=samples/oo/module_ns_smoke.lx
+          MAP[golden/oo/trait_enforce_warn.txt]=samples/oo/trait_enforce_warn.lx
+          MAP[golden/modules_demo.txt]=samples/modules/golden_smoke.lx
+          MAP[golden/oo/receiver_expr.txt]=samples/oo/receiver_expr_golden.lx
+          MAP[golden/modules_alias_demo.txt]=samples/modules/alias_demo.lx
+          MAP[golden/stdlib_encoding.txt]=samples/stdlib/encoding.lx
+          MAP[golden/stdlib_strings.txt]=samples/stdlib/strings.lx
+          MAP[golden/stdlib_math.txt]=samples/stdlib/math.lx
+          MAP[golden/stdlib_regex_time_crypto.txt]=samples/stdlib/regex_time_crypto.lx
 
           normalize() {
             sed -E \
@@ -214,6 +254,17 @@ jobs:
             exit 1
           fi
 
+      - name: Strict trait negative check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if LEXON_TRAIT_ENFORCE=1 cargo run -q -p lexc-cli -- compile --run samples/oo/trait_enforce_error.lx; then
+            echo "Expected strict trait failure but sample succeeded" >&2
+            exit 1
+          else
+            echo "Strict trait negative: OK (failed as expected)"
+          fi
+
       - name: Metrics thresholds
         shell: bash
         run: |
@@ -231,6 +282,38 @@ ok = (calls<=thr_calls) and (lat_ms<=thr_lat) and (cost<=thr_cost)
 print(f"metrics: calls={calls} lat_ms={lat_ms} cost={cost} (thresholds: {thr_calls},{thr_lat},{thr_cost})")
 sys.exit(0 if ok else 2)
 PY
+
+      - name: Coverage (llvm-cov)
+        shell: bash
+        run: |
+          set -euo pipefail
+          path=$(bash scripts/coverage.sh)
+          echo "coverage_path=${path}" >> "$GITHUB_OUTPUT"
+        id: cov
+
+      - name: Upload coverage (lcov)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc1-coverage-lcov
+          path: ${{ steps.cov.outputs.coverage_path }}
+          if-no-files-found: ignore
+
+      - name: Bench (compile+run samples)
+        shell: bash
+        run: |
+          set -euo pipefail
+          path=$(bash scripts/bench_smoke.sh)
+          echo "bench_path=${path}" >> "$GITHUB_OUTPUT"
+        id: bench
+
+      - name: Upload bench results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc1-bench
+          path: ${{ steps.bench.outputs.bench_path }}
+          if-no-files-found: ignore
 
       - name: Upload golden coverage
         if: always()

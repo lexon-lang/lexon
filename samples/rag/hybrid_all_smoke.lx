@@ -10,3 +10,6 @@ let all = memory_index__hybrid_search_all("Lexon", 2, 2, 4, {"alpha":0.7});
 print(all);
 
 
+
+
+

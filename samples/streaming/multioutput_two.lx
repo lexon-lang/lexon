@@ -5,3 +5,6 @@ save_binary_file_stream(mo, "samples/streaming/out2.txt");
 print("[stream] multioutput_two end");
 
 
+
+
+

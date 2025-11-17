@@ -1,0 +1,15 @@
+trait Greeter {
+  greet(name: string) -> string;
+}
+
+impl Greeter {
+  // wrong param type on purpose
+  fn greet(n: int) -> string { return "Hello, "; }
+}
+
+print("Hello, ");
+
+
+
+
+

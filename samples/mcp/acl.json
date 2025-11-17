@@ -1,0 +1,5 @@
+{
+  "bearer:secret": ["read_file", "list_tools", "tool_info"]
+}
+
+

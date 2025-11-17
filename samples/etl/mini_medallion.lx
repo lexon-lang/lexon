@@ -23,7 +23,7 @@ let validated = ask_safe {
   user: "Produce a short, factual executive summary for the selected tickets";
   model: "gpt-4";
   validation: "basic";
-  confidence_threshold: 0.8;
+  confidence_threshold: 0.6;
 };
 
 // 4) Artifacts

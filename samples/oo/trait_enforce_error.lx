@@ -1,0 +1,15 @@
+// This sample should error when LEXON_TRAIT_ENFORCE=1 (type mismatch)
+trait ProcessorE {
+  process(data: string) -> string;
+}
+
+impl ProcessorE {
+  fn process(data: int) -> string {
+    "bad"
+  }
+}
+
+// Call to ensure function exists (won't run due to compile-time enforcement)
+print("should not run with strict enforcement");
+
+

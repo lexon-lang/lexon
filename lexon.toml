@@ -14,7 +14,7 @@ exclude = ["target/**/*", "*.tmp", "*.log"]
 
 # LLM system configuration
 [system]
-default_provider = "simulated"
+default_provider = "openai"
 [vector]
 # backend: sqlite_local | qdrant
 backend = "sqlite_local"
@@ -65,6 +65,8 @@ completions = "completions"
 "gpt-4" = { max_tokens = 8192, cost_per_1k = 0.03 }
 "gpt-4-turbo" = { max_tokens = 128000, cost_per_1k = 0.01 }
 "gpt-3.5-turbo" = { max_tokens = 4096, cost_per_1k = 0.002 }
+"gpt-4o" = { max_tokens = 128000, cost_per_1k = 0.01 }
+"gpt-4o-mini" = { max_tokens = 128000, cost_per_1k = 0.003 }
 
 [providers.anthropic]
 name = "Anthropic"
@@ -102,3 +104,38 @@ generate = "models/{model}:generateContent"
 [providers.google.models]
 "gemini-2.5-pro" = { max_tokens = 1000000, cost_per_1k = 0.0035 }
 "gemini-2.5-flash" = { max_tokens = 1000000, cost_per_1k = 0.00035 } 
+
+# [web_search]
+# provider = "duckduckgo"
+# endpoint = "https://api.duckduckgo.com/"
+# query_param = "q"
+# count_param = "n"
+# format_param = "format"
+# format_value = "json"
+# # auth: none|header|query
+# auth_mode = "none"
+# auth_name = "Authorization"
+# auth_env = "WEB_SEARCH_API_KEY"
+# # extra params if needed
+# extra_params = { no_redirect = "1", no_html = "1" }
+
+# Brave Search preset (uncomment to use)
+#[web_search]
+#provider = "brave"
+#endpoint = "https://api.search.brave.com/res/v1/web/search"
+#query_param = "q"
+#count_param = "count"
+#auth_mode = "header"
+#auth_name = "X-Subscription-Token"
+#auth_env = "BRAVE_SEARCH_API_KEY"
+
+# SerpAPI active config
+[web_search]
+provider = "serpapi"
+endpoint = "https://serpapi.com/search.json"
+query_param = "q"
+count_param = "num"
+auth_mode = "query"       # API key passed as query param
+auth_name = "api_key"     # parameter name used by SerpAPI
+auth_env = "SERPAPI_API_KEY"
+extra_params = { engine = "google" }

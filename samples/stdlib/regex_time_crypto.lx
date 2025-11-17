@@ -1,0 +1,14 @@
+// samples/stdlib/regex_time_crypto.lx
+module samples.stdlib.misc;
+
+fn main() {
+  let s = "abc-123-xyz";
+  print(regex.match(s, "[0-9]+"));
+  print(regex.replace(s, "[0-9]+", "#"));
+  let ts = time.now_iso8601();
+  print(ts);
+  print(crypto.sha256("lexon"));
+  print(number.format(3.14159, 3));
+}
+
+

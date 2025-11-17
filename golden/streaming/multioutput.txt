@@ -8,3 +8,6 @@ STREAM_EVENT {"type":"file_write_done","path":"samples/streaming/out.txt","bytes
 [stream] multioutput end
 
 
+
+
+

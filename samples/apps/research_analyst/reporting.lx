@@ -1,0 +1,61 @@
+module reporting;
+
+trait Reporter {
+  render(text: string) -> string;
+}
+
+impl Markdown {
+  fn render(t: string) -> string {
+    return "# " + t;
+  }
+}
+
+fn build_heading(title: string) -> string {
+  Markdown.render(title)
+}
+
+fn build_summary(h: string, c: string, a: string, s: string, acts: string) -> string {
+  return h + "\n\nCONSENSUS:\n" + c + "\n\nARBITRAGE:\n" + a + "\n\nSAFE:\n" + s + "\n\nNEXT ACTIONS:\n" + acts;
+}
+
+// Build clean citations list from a web.search JSON (DDG/simulated)
+fn build_citations(web: json) -> string {
+  // Simpler, expression-only version (no local lets / no if) to maximize compiler compatibility
+  // Truncate titles via regex; if fields are null they fallback via regex.replace to Text/FirstURL
+  return "\n\nCITATIONS:\n"
+    + "- " 
+    + regex.replace(
+        regex.replace(
+          json.as_string(json.get(json.path(web, "/Results/0"), "title")),
+          "^null$",
+          json.as_string(json.get(json.path(web, "/Results/0"), "Text"))
+        ),
+        "^(.{120}).+$",
+        "$1..."
+      )
+    + " ("
+    + regex.replace(
+        json.as_string(json.get(json.path(web, "/Results/0"), "url")),
+        "^null$",
+        json.as_string(json.get(json.path(web, "/Results/0"), "FirstURL"))
+      )
+    + ")\n"
+    + "- "
+    + regex.replace(
+        regex.replace(
+          json.as_string(json.get(json.path(web, "/Results/1"), "title")),
+          "^null$",
+          json.as_string(json.get(json.path(web, "/Results/1"), "Text"))
+        ),
+        "^(.{120}).+$",
+        "$1..."
+      )
+    + " ("
+    + regex.replace(
+        json.as_string(json.get(json.path(web, "/Results/1"), "url")),
+        "^null$",
+        json.as_string(json.get(json.path(web, "/Results/1"), "FirstURL"))
+      )
+    + ")\n";
+}
+

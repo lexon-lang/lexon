@@ -1,0 +1,19 @@
+// samples/stdlib/encoding.lx
+module samples.stdlib.encoding;
+
+fn main() {
+  let s = "Hello Lexon!";
+  let b64 = encoding.base64_encode(s);
+  let back = encoding.base64_decode(b64);
+  print(back);
+
+  let hx = encoding.hex_encode(s);
+  let back2 = encoding.hex_decode(hx);
+  print(back2);
+
+  let url = encoding.url_encode("a b+c/%");
+  let back3 = encoding.url_decode(url);
+  print(back3);
+}
+
+

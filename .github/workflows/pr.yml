@@ -53,6 +53,15 @@ jobs:
           MAP[golden/fixtures/json_roundtrip.txt]=samples/fixtures/json_roundtrip.lx
           MAP[golden/rag/opt_window.txt]=samples/rag/opt_window.lx
           MAP[golden/rag/tokenize_smoke.txt]=samples/rag/tokenize_smoke.lx
+          MAP[golden/oo/struct_enum_smoke.txt]=samples/oo/struct_enum_smoke.lx
+          MAP[golden/lang/top_level_temps.txt]=samples/lang/top_level_temps.lx
+          MAP[golden/oo/trait_impl_smoke.txt]=samples/oo/trait_impl_smoke.lx
+          MAP[golden/lang/return_free_fn.txt]=samples/lang/return_free_fn.lx
+          MAP[golden/oo/module_ns_smoke.txt]=samples/oo/module_ns_smoke.lx
+          MAP[golden/oo/trait_enforce_warn.txt]=samples/oo/trait_enforce_warn.lx
+          MAP[golden/modules_demo.txt]=samples/modules/golden_smoke.lx
+          MAP[golden/oo/receiver_expr.txt]=samples/oo/receiver_expr_golden.lx
+          MAP[golden/modules_alias_demo.txt]=samples/modules/alias_demo.lx
 
           normalize() {
             sed -E \
@@ -85,6 +94,17 @@ jobs:
           echo "PR golden coverage: $((total-failures))/$total"
           test "$failures" -eq 0
 
+      - name: Strict trait negative check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if LEXON_TRAIT_ENFORCE=1 cargo run -q -p lexc-cli -- compile --run samples/oo/trait_enforce_error.lx; then
+            echo "Expected strict trait failure but sample succeeded" >&2
+            exit 1
+          else
+            echo "Strict trait negative: OK (failed as expected)"
+          fi
+
       - name: Metrics thresholds
         shell: bash
         run: |
@@ -103,5 +123,24 @@ ok = (calls<=thr_calls) and (lat_ms<=thr_lat) and (cost<=thr_cost)
 print(f"metrics: calls={calls} lat_ms={lat_ms} cost={cost} (thresholds: {thr_calls},{thr_lat},{thr_cost})")
 sys.exit(0 if ok else 2)
 PY
+
+      - name: MCP stdio smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Exercise stdio server: list_tools + read_file
+          LEXON_MCP_HEARTBEAT_MS=200 LEXON_MCP_STREAM=1 ./target/debug/lexc --mcp-stdio << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"list_tools"}
+{"jsonrpc":"2.0","id":2,"method":"tool_call","params":{"name":"read_file","args":{"path":"README.md"}}}
+exit
+EOF
+
+      - name: MCP WS oneshot smoke
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Start WS server with self-test client to ensure accept loop works
+          LEXON_MCP_SELF_TEST=1 LEXON_MCP_SERVER_ONESHOT=1 LEXON_MCP_WS_ADDR=127.0.0.1:8090 LEXON_MCP_HEARTBEAT_MS=200 ./target/debug/lexc --mcp-ws
 
 

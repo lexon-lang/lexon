@@ -10,3 +10,6 @@ print(n);
 let _d = dist_cache__del("k");
 let a2 = dist_cache__exists("k");
 print(a2);
+
+
+

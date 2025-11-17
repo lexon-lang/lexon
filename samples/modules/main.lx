@@ -1,0 +1,8 @@
+module app.demo;
+
+import lib.math;
+
+let d = lib__math__double(3);
+print(d);
+
+

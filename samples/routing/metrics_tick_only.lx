@@ -1,3 +1,6 @@
 // Routing metrics tick-only smoke
 let m = routing.get_metrics_json();
 print(m);
+
+
+

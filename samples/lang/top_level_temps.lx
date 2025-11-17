@@ -1,0 +1,6 @@
+// Ensure top-level temporaries don't crash when discarded
+Ok("x");
+Ok("y");
+print("OK top-level temps");
+
+

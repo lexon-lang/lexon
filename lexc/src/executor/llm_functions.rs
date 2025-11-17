@@ -3,7 +3,7 @@
 // LLM-related functions extracted from executor/mod.rs
 // This module handles all Large Language Model operations including:
 // - ask_parallel, ask_merge, ask_ensemble
-// - ask_with_fallback, ask_multioutput  
+// - ask_with_fallback, ask_multioutput
 // - confidence_score, validate_response
 // - multimodal_request
 
@@ -602,7 +602,7 @@ impl ExecutionEnvironment {
             self.config.llm_model.clone()
         };
 
-        let mut responses: Vec<Value> = Vec::new();
+        // Removed unused pre-allocation; results are collected below
         let vec_len = prompts.len();
         let join_res = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
@@ -635,7 +635,7 @@ impl ExecutionEnvironment {
                 out
             })
         });
-        responses = join_res;
+        let responses = join_res;
         if let Some(res) = result {
             self.store_value(res, RuntimeValue::Json(Value::Array(responses)))?;
         }
@@ -704,7 +704,9 @@ impl ExecutionEnvironment {
                     });
                 }
                 while let Some(item) = set.join_next().await {
-                    if let Ok(Ok(s)) = item { return Some(s); }
+                    if let Ok(Ok(s)) = item {
+                        return Some(s);
+                    }
                 }
                 None
             })
@@ -712,10 +714,14 @@ impl ExecutionEnvironment {
 
         match first_ok {
             Some(s) => {
-                if let Some(res) = result { self.store_value(res, RuntimeValue::String(s))?; }
+                if let Some(res) = result {
+                    self.store_value(res, RuntimeValue::String(s))?;
+                }
                 Ok(())
             }
-            None => Err(ExecutorError::RuntimeError("join_any: all tasks failed".to_string())),
+            None => Err(ExecutorError::RuntimeError(
+                "join_any: all tasks failed".to_string(),
+            )),
         }
     }
 
@@ -725,31 +731,60 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
-        if args.is_empty() { return Err(ExecutorError::ArgumentError("ask_stream requires prompt".to_string())); }
-        let prompt = match self.evaluate_expression(args[0].clone())? { RuntimeValue::String(s)=>s, other=>format!("{:?}", other) };
-        let model_opt = if args.len()>1 { match self.evaluate_expression(args[1].clone())? { RuntimeValue::String(s)=>Some(s), _=>None } } else { self.config.llm_model.clone() };
+        if args.is_empty() {
+            return Err(ExecutorError::ArgumentError(
+                "ask_stream requires prompt".to_string(),
+            ));
+        }
+        let prompt = match self.evaluate_expression(args[0].clone())? {
+            RuntimeValue::String(s) => s,
+            other => format!("{:?}", other),
+        };
+        let model_opt = if args.len() > 1 {
+            match self.evaluate_expression(args[1].clone())? {
+                RuntimeValue::String(s) => Some(s),
+                _ => None,
+            }
+        } else {
+            self.config.llm_model.clone()
+        };
 
         let mut llm_adapter = self.llm_adapter.clone();
         let response = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                llm_adapter.call_llm_async(
-                    model_opt.as_deref(), Some(0.7), None, Some(&prompt), None, None, &HashMap::new()
-                ).await
+                llm_adapter
+                    .call_llm_async(
+                        model_opt.as_deref(),
+                        Some(0.7),
+                        None,
+                        Some(&prompt),
+                        None,
+                        None,
+                        &HashMap::new(),
+                    )
+                    .await
             })
         })?;
 
         // Simulated chunked streaming: fixed-size chunks
-        let chunk_size: usize = std::env::var("LEXON_STREAM_CHUNK_BYTES").ok().and_then(|v| v.parse().ok()).unwrap_or(64);
+        let chunk_size: usize = std::env::var("LEXON_STREAM_CHUNK_BYTES")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(64);
         let total_len = response.len();
         let mut idx = 0usize;
         while idx < total_len {
-            if self.cancel_requested { return Err(ExecutorError::RuntimeError("cancelled".to_string())); }
+            if self.cancel_requested {
+                return Err(ExecutorError::RuntimeError("cancelled".to_string()));
+            }
             let end = (idx + chunk_size).min(total_len);
             let chunk = &response[idx..end];
             println!("STREAM_CHUNK {{\"type\":\"llm\",\"offset\":{},\"len\":{},\"total\":{},\"data\":{:?}}}", idx, chunk.len(), total_len, chunk);
             idx = end;
         }
-        if let Some(res)=result { self.store_value(res, RuntimeValue::String(response))?; }
+        if let Some(res) = result {
+            self.store_value(res, RuntimeValue::String(response))?;
+        }
         Ok(())
     }
 
@@ -759,26 +794,64 @@ impl ExecutionEnvironment {
         args: &[LexExpression],
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
-        if args.len() < 2 { return Err(ExecutorError::ArgumentError("ask_multioutput_stream requires prompt and output_files".to_string())); }
-        let prompt = match self.evaluate_expression(args[0].clone())? { RuntimeValue::String(s)=>s, _=>return Err(ExecutorError::ArgumentError("prompt must be string".to_string())) };
+        if args.len() < 2 {
+            return Err(ExecutorError::ArgumentError(
+                "ask_multioutput_stream requires prompt and output_files".to_string(),
+            ));
+        }
+        let prompt = match self.evaluate_expression(args[0].clone())? {
+            RuntimeValue::String(s) => s,
+            _ => {
+                return Err(ExecutorError::ArgumentError(
+                    "prompt must be string".to_string(),
+                ))
+            }
+        };
         let files_val = self.evaluate_expression(args[1].clone())?;
         let output_files: Vec<String> = match files_val {
-            RuntimeValue::Json(Value::Array(arr)) => arr.into_iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect(),
+            RuntimeValue::Json(Value::Array(arr)) => arr
+                .into_iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
             RuntimeValue::String(s) => vec![s],
-            _ => return Err(ExecutorError::ArgumentError("output_files must be array of strings".to_string())),
+            _ => {
+                return Err(ExecutorError::ArgumentError(
+                    "output_files must be array of strings".to_string(),
+                ))
+            }
         };
-        let model_opt = if args.len()>2 { match self.evaluate_expression(args[2].clone())? { RuntimeValue::String(s)=>Some(s), _=>None } } else { self.config.llm_model.clone() };
+        let model_opt = if args.len() > 2 {
+            match self.evaluate_expression(args[2].clone())? {
+                RuntimeValue::String(s) => Some(s),
+                _ => None,
+            }
+        } else {
+            self.config.llm_model.clone()
+        };
 
         // LLM call
         let mut llm_adapter = self.llm_adapter.clone();
         let llm_response = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                llm_adapter.call_llm_async(model_opt.as_deref(), Some(0.7), None, Some(&prompt), None, None, &HashMap::new()).await
+                llm_adapter
+                    .call_llm_async(
+                        model_opt.as_deref(),
+                        Some(0.7),
+                        None,
+                        Some(&prompt),
+                        None,
+                        None,
+                        &HashMap::new(),
+                    )
+                    .await
             })
         })?;
 
         // Stream pseudo-progress for file generation
-        println!("STREAM_EVENT {{\"type\":\"multioutput\",\"stage\":\"start\",\"files\":{}}}", output_files.len());
+        println!(
+            "STREAM_EVENT {{\"type\":\"multioutput\",\"stage\":\"start\",\"files\":{}}}",
+            output_files.len()
+        );
         let mut binary_files = Vec::new();
         for (i, filename) in output_files.iter().enumerate() {
             println!("STREAM_EVENT {{\"type\":\"multioutput\",\"stage\":\"file_start\",\"index\":{},\"name\":{:?}}}", i, filename);
@@ -788,7 +861,9 @@ impl ExecutionEnvironment {
         }
         println!("STREAM_EVENT {{\"type\":\"multioutput\",\"stage\":\"end\"}}");
         let mo = self.create_multioutput(llm_response, binary_files);
-        if let Some(res)=result { self.store_value(res, mo)?; }
+        if let Some(res) = result {
+            self.store_value(res, mo)?;
+        }
         Ok(())
     }
 }

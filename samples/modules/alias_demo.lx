@@ -1,0 +1,13 @@
+// samples/modules/alias_demo.lx
+module samples.modules.demo;
+
+// Use item aliasing from lib.math
+import lib.math::{double as dbl};
+
+fn main() {
+  let x = 4;
+  let y = dbl(x);
+  print("dbl(4) = " + y);
+}
+
+

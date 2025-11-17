@@ -105,8 +105,11 @@ fn main() {
     let args = Cli::parse();
     // MCP subcommands (no input file required)
     if args.mcp_stdio || args.mcp_ws {
-        let mut config = ExecutorConfig {
-            memory_path: args.workspace.as_ref().map(|p| p.to_string_lossy().to_string()),
+        let config = ExecutorConfig {
+            memory_path: args
+                .workspace
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string()),
             verbose: args.verbose,
             llm_model: Some(args.llm_model.clone()),
             use_new_llm_architecture: true,
@@ -118,8 +121,13 @@ fn main() {
             return;
         }
         if args.mcp_ws {
-            let addr = args.mcp_addr.clone().map(|s| lexc::lexir::LexExpression::Value(lexc::lexir::ValueRef::Literal(lexc::lexir::LexLiteral::String(s))));
-            let args_slice: Vec<lexc::lexir::LexExpression> = if let Some(a) = addr { vec![a] } else { vec![] };
+            let addr = args.mcp_addr.clone().map(|s| {
+                lexc::lexir::LexExpression::Value(lexc::lexir::ValueRef::Literal(
+                    lexc::lexir::LexLiteral::String(s),
+                ))
+            });
+            let args_slice: Vec<lexc::lexir::LexExpression> =
+                if let Some(a) = addr { vec![a] } else { vec![] };
             let rt = TokioRuntime::new().unwrap();
             rt.block_on(async {
                 // enter runtime so server can use tokio Handle::current()
