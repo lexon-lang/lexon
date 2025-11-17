@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
 fn main() {
-    let grammar_dir = PathBuf::from("..")
-        .join("tree-sitter-lexon")
-        .join("src");
+    let grammar_dir = PathBuf::from("..").join("tree-sitter-lexon").join("src");
     let parser_file = grammar_dir.join("parser.c");
     let scanner_file = grammar_dir.join("scanner.c");
 
@@ -21,4 +19,3 @@ fn main() {
     build.warnings(false);
     build.compile("tree_sitter_lexon_parser");
 }
-

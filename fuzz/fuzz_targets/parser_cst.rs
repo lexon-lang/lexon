@@ -20,4 +20,3 @@ fuzz_target!(|data: &[u8]| {
         let _ = parser.parse(source, None);
     }
 });
-
