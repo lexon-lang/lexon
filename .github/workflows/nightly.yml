@@ -21,7 +21,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        rust: [stable]
     runs-on: ${{ matrix.os }}
     env:
       LEXON_SEED: "0"
@@ -33,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Use Rust toolchain
-        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -133,7 +132,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        rust: [stable]
     runs-on: ${{ matrix.os }}
     env:
       LEXON_SEED: "0"
@@ -147,7 +145,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Use Rust toolchain
-        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
