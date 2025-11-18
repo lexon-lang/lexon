@@ -81,7 +81,9 @@ jobs:
           REPO="${GITHUB_REPOSITORY}"
           UB_URL="https://github.com/${REPO}/releases/download/${TAG}/lexon-ubuntu-latest.tar.gz"
           MAC_URL="https://github.com/${REPO}/releases/download/${TAG}/lexon-macos-latest.tar.gz"
-          cat > dist/lexc.rb <<'HBR'
+          SHAS_UBUNTU="${{ steps.shas.outputs.sha_ubuntu }}"
+          SHAS_MACOS="${{ steps.shas.outputs.sha_macos }}"
+          cat > dist/lexc.rb <<HBR
 class Lexc < Formula
   desc "Lexon CLI"
   homepage "https://github.com/${REPO}"
@@ -89,12 +91,12 @@ class Lexc < Formula
 
   on_macos do
     url "${MAC_URL}"
-    sha256 "${{ steps.shas.outputs.sha_macos }}"
+    sha256 "${SHAS_MACOS}"
   end
 
   on_linux do
     url "${UB_URL}"
-    sha256 "${{ steps.shas.outputs.sha_ubuntu }}"
+    sha256 "${SHAS_UBUNTU}"
   end
 
   def install
