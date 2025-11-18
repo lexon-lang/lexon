@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo "Wheels workflow only runs via workflow_dispatch (current: ${{ github.event_name }})"
+          echo "Wheels workflow only runs via workflow_dispatch (current: $GITHUB_EVENT_NAME)"
 
   build:
     if: ${{ github.event_name == 'workflow_dispatch' }}

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo "PR Gate only runs on pull_request events (current: ${{ github.event_name }})"
+          echo "PR Gate only runs on pull_request events (current: $GITHUB_EVENT_NAME)"
 
   build-and-goldens:
     if: ${{ github.event_name == 'pull_request' }}
