@@ -12,7 +12,8 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Nightly smokes only run via schedule or workflow_dispatch (current: ${{ github.event_name }})"
+      - run: |
+          echo "Nightly smokes only run via schedule or workflow_dispatch (current: ${{ github.event_name }})"
 
   smokes:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
