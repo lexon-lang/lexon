@@ -84,27 +84,27 @@ jobs:
           SHAS_UBUNTU="${{ steps.shas.outputs.sha_ubuntu }}"
           SHAS_MACOS="${{ steps.shas.outputs.sha_macos }}"
           cat > dist/lexc.rb <<HBR
-class Lexc < Formula
-  desc "Lexon CLI"
-  homepage "https://github.com/${REPO}"
-  version "${TAG}"
+          class Lexc < Formula
+            desc "Lexon CLI"
+            homepage "https://github.com/${REPO}"
+            version "${TAG}"
 
-  on_macos do
-    url "${MAC_URL}"
-    sha256 "${SHAS_MACOS}"
-  end
+            on_macos do
+              url "${MAC_URL}"
+              sha256 "${SHAS_MACOS}"
+            end
 
-  on_linux do
-    url "${UB_URL}"
-    sha256 "${SHAS_UBUNTU}"
-  end
+            on_linux do
+              url "${UB_URL}"
+              sha256 "${SHAS_UBUNTU}"
+            end
 
-  def install
-    bin.install "lexc"
-    bin.install "lexc-cli"
-  end
-end
-HBR
+            def install
+              bin.install "lexc"
+              bin.install "lexc-cli"
+            end
+          end
+          HBR
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:

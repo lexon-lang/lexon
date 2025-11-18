@@ -146,11 +146,11 @@ jobs:
         run: |
           set -euo pipefail
           # Exercise stdio server: list_tools + read_file
-          LEXON_MCP_HEARTBEAT_MS=200 LEXON_MCP_STREAM=1 ./target/debug/lexc --mcp-stdio << 'EOF'
-{"jsonrpc":"2.0","id":1,"method":"list_tools"}
-{"jsonrpc":"2.0","id":2,"method":"tool_call","params":{"name":"read_file","args":{"path":"README.md"}}}
-exit
-EOF
+          LEXON_MCP_HEARTBEAT_MS=200 LEXON_MCP_STREAM=1 ./target/debug/lexc --mcp-stdio <<'EOF'
+          {"jsonrpc":"2.0","id":1,"method":"list_tools"}
+          {"jsonrpc":"2.0","id":2,"method":"tool_call","params":{"name":"read_file","args":{"path":"README.md"}}}
+          exit
+          EOF
 
       - name: MCP WS oneshot smoke
         if: matrix.os == 'ubuntu-latest'
