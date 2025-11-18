@@ -121,15 +121,22 @@ jobs:
           set -euo pipefail
           # Generate metrics summary
           cargo run -q -p lexc-cli -- compile --run samples/metrics/write_json.lx
-          python3 - << 'PY'
-import json,sys
+        python3 - <<'PY'
+import json
+import sys
+
 with open('samples/metrics/summary.json') as f:
-    js=json.load(f)
+    js = json.load(f)
+
 calls = int(js.get('total_llm_calls', 0))
 lat_ms = int(js.get('llm_total_ms', 0))
 cost = float(js.get('total_cost_usd', 0.0)) if 'total_cost_usd' in js else 0.0
-thr_calls=50; thr_lat=60000; thr_cost=5.0
-ok = (calls<=thr_calls) and (lat_ms<=thr_lat) and (cost<=thr_cost)
+
+thr_calls = 50
+thr_lat = 60000
+thr_cost = 5.0
+
+ok = (calls <= thr_calls) and (lat_ms <= thr_lat) and (cost <= thr_cost)
 print(f"metrics: calls={calls} lat_ms={lat_ms} cost={cost} (thresholds: {thr_calls},{thr_lat},{thr_cost})")
 sys.exit(0 if ok else 2)
 PY
