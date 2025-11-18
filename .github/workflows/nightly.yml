@@ -1,6 +1,8 @@
 name: Nightly smokes (v1.0.0-rc.1)
 
 on:
+  push:
+    branches: [ main ]
   schedule:
     - cron: '0 2 * * *'  # 02:00 UTC nightly
   workflow_dispatch: {}

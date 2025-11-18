@@ -2,6 +2,7 @@ name: Release (RC.1)
 
 on:
   push:
+    branches: [ main ]
     tags:
       - 'v*'
 
