@@ -41,7 +41,7 @@ struct WebSearchConfig {
 use crate::executor::llm_adapter::{ProviderConfig, ProviderKind};
 use base64::Engine;
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::sync::Arc;
 
 use memory::MemoryManager;
@@ -625,15 +625,7 @@ impl ExecutionEnvironment {
     fn estimate_token_count_local(text: &str, model: Option<&str>) -> usize {
         // Approximate per-model chars-per-token ratios; fallback to 4
         let m = model.unwrap_or("").to_lowercase();
-        let ratio: f32 = if m.contains("gpt-4") || m.contains("gpt-3.5") {
-            4.0
-        } else if m.contains("claude") {
-            5.0
-        } else if m.contains("gemini") {
-            4.0
-        } else {
-            4.0
-        };
+        let ratio: f32 = if m.contains("claude") { 5.0 } else { 4.0 };
         let chars = text.chars().count() as f32;
         ((chars / ratio).ceil() as usize).max(1)
     }
@@ -991,7 +983,7 @@ impl ExecutionEnvironment {
                 // Accept [name, mime, base64] or object {name,mime,base64}
                 let (name, mime, b64) = if let Some(arr) = args.as_array() {
                     let n = arr
-                        .get(0)
+                        .first()
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
@@ -1035,7 +1027,7 @@ impl ExecutionEnvironment {
                 // Accept [path, base64]
                 let (path, b64) = if let Some(arr) = args.as_array() {
                     let p = arr
-                        .get(0)
+                        .first()
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
@@ -1844,7 +1836,7 @@ impl ExecutionEnvironment {
                     let recv_val = self.evaluate_expression(args[0].clone())?;
                     let method_name = match self.evaluate_expression(args[1].clone())? {
                         RuntimeValue::String(s) => s,
-                        other => format!("{}", format_runtime_value(&other)),
+                        other => format_runtime_value(&other),
                     };
                     // Infer type from __type on JSON objects
                     let type_name = match recv_val {
@@ -1955,7 +1947,7 @@ impl ExecutionEnvironment {
                     }
                     let method = match self.evaluate_expression(args[0].clone())? {
                         RuntimeValue::String(s) => s.to_uppercase(),
-                        v => format!("{}", format_runtime_value(&v)).to_uppercase(),
+                        v => format_runtime_value(&v).to_uppercase(),
                     };
                     let url = match self.evaluate_expression(args[1].clone())? {
                         RuntimeValue::String(s) => s,
@@ -2478,8 +2470,8 @@ impl ExecutionEnvironment {
                     }
                     let timeout_ms: u64 = if args.len() > 1 {
                         match self.evaluate_expression(args[1].clone())? {
-                            RuntimeValue::Integer(i) => (i as i64).max(0) as u64,
-                            RuntimeValue::Float(f) => (f as i64).max(0) as u64,
+                            RuntimeValue::Integer(i) => i.max(0) as u64,
+                            RuntimeValue::Float(f) => f.max(0.0) as u64,
                             RuntimeValue::String(s) => s.parse().unwrap_or(1000),
                             _ => 1000,
                         }
@@ -2564,7 +2556,7 @@ impl ExecutionEnvironment {
                                     None,
                                 )
                                 .await
-                                .map_err(|e| ExecutorError::RuntimeError(e))?;
+                                .map_err(ExecutorError::RuntimeError)?;
                             let id = h.id().to_string();
                             Ok::<(String, crate::runtime::scheduler::TaskHandle), ExecutorError>((
                                 id, h,
@@ -2688,7 +2680,7 @@ impl ExecutionEnvironment {
                     Ok(())
                 } else if function == "session.configure" || function == "session__configure" {
                     // session.configure({ ttl_ms?, gc_interval_ms? })
-                    if args.len() < 1 {
+                    if args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "session.configure requires config json".to_string(),
                         ));
@@ -2986,25 +2978,24 @@ impl ExecutionEnvironment {
                     let mut alpha: f32 = 0.7;
                     let mut filters: HashMap<String, String> = HashMap::new();
                     if args.len() > 4 {
-                        match self.evaluate_expression(args[4].clone())? {
-                            RuntimeValue::Json(Value::Object(map)) => {
-                                if let Some(a) = map.get("alpha").and_then(|v| v.as_f64()) {
-                                    alpha = (a as f32).clamp(0.0, 1.0);
-                                }
-                                if let Some(fm) = map.get("filters").and_then(|v| v.as_object()) {
-                                    for (k, v) in fm {
-                                        if let Some(s) = v.as_str() {
-                                            filters.insert(k.clone(), s.to_string());
-                                        } else {
-                                            filters.insert(k.clone(), v.to_string());
-                                        }
+                        if let RuntimeValue::Json(Value::Object(map)) =
+                            self.evaluate_expression(args[4].clone())?
+                        {
+                            if let Some(a) = map.get("alpha").and_then(|v| v.as_f64()) {
+                                alpha = (a as f32).clamp(0.0, 1.0);
+                            }
+                            if let Some(fm) = map.get("filters").and_then(|v| v.as_object()) {
+                                for (k, v) in fm {
+                                    if let Some(s) = v.as_str() {
+                                        filters.insert(k.clone(), s.to_string());
+                                    } else {
+                                        filters.insert(k.clone(), v.to_string());
                                     }
                                 }
-                                if let Some(raw) = map.get("qdrant_filter") {
-                                    filters.insert("__raw__".to_string(), raw.to_string());
-                                }
                             }
-                            _ => {}
+                            if let Some(raw) = map.get("qdrant_filter") {
+                                filters.insert("__raw__".to_string(), raw.to_string());
+                            }
                         }
                     }
                     let offset = page.saturating_mul(k);
@@ -3069,25 +3060,24 @@ impl ExecutionEnvironment {
                     let mut alpha: f32 = 0.7;
                     let mut filters: HashMap<String, String> = HashMap::new();
                     if args.len() > 4 {
-                        match self.evaluate_expression(args[4].clone())? {
-                            RuntimeValue::Json(Value::Object(map)) => {
-                                if let Some(a) = map.get("alpha").and_then(|v| v.as_f64()) {
-                                    alpha = (a as f32).clamp(0.0, 1.0);
-                                }
-                                if let Some(fm) = map.get("filters").and_then(|v| v.as_object()) {
-                                    for (k, v) in fm {
-                                        if let Some(s) = v.as_str() {
-                                            filters.insert(k.clone(), s.to_string());
-                                        } else {
-                                            filters.insert(k.clone(), v.to_string());
-                                        }
+                        if let RuntimeValue::Json(Value::Object(map)) =
+                            self.evaluate_expression(args[4].clone())?
+                        {
+                            if let Some(a) = map.get("alpha").and_then(|v| v.as_f64()) {
+                                alpha = (a as f32).clamp(0.0, 1.0);
+                            }
+                            if let Some(fm) = map.get("filters").and_then(|v| v.as_object()) {
+                                for (k, v) in fm {
+                                    if let Some(s) = v.as_str() {
+                                        filters.insert(k.clone(), s.to_string());
+                                    } else {
+                                        filters.insert(k.clone(), v.to_string());
                                     }
                                 }
-                                if let Some(raw) = map.get("qdrant_filter") {
-                                    filters.insert("__raw__".to_string(), raw.to_string());
-                                }
                             }
-                            _ => {}
+                            if let Some(raw) = map.get("qdrant_filter") {
+                                filters.insert("__raw__".to_string(), raw.to_string());
+                            }
                         }
                     }
                     let mut out: Vec<Value> = Vec::new();
@@ -3142,25 +3132,24 @@ impl ExecutionEnvironment {
                     let mut model: Option<String> = None;
                     let mut top_k: usize = k;
                     if args.len() > 2 {
-                        match self.evaluate_expression(args[2].clone())? {
-                            RuntimeValue::Json(Value::Object(map)) => {
-                                if let Some(a) = map.get("alpha").and_then(|v| v.as_f64()) {
-                                    alpha = (a as f32).clamp(0.0, 1.0);
-                                }
-                                if let Some(fm) = map.get("filters").and_then(|v| v.as_object()) {
-                                    for (k, v) in fm {
-                                        if let Some(s) = v.as_str() {
-                                            filters.insert(k.clone(), s.to_string());
-                                        } else {
-                                            filters.insert(k.clone(), v.to_string());
-                                        }
+                        if let RuntimeValue::Json(Value::Object(map)) =
+                            self.evaluate_expression(args[2].clone())?
+                        {
+                            if let Some(a) = map.get("alpha").and_then(|v| v.as_f64()) {
+                                alpha = (a as f32).clamp(0.0, 1.0);
+                            }
+                            if let Some(fm) = map.get("filters").and_then(|v| v.as_object()) {
+                                for (k, v) in fm {
+                                    if let Some(s) = v.as_str() {
+                                        filters.insert(k.clone(), s.to_string());
+                                    } else {
+                                        filters.insert(k.clone(), v.to_string());
                                     }
                                 }
-                                if let Some(raw) = map.get("qdrant_filter") {
-                                    filters.insert("__raw__".to_string(), raw.to_string());
-                                }
                             }
-                            _ => {}
+                            if let Some(raw) = map.get("qdrant_filter") {
+                                filters.insert("__raw__".to_string(), raw.to_string());
+                            }
                         }
                     }
                     if args.len() > 3 {
@@ -3349,16 +3338,7 @@ impl ExecutionEnvironment {
                         self.store_value(res, RuntimeValue::Boolean(true))?;
                     }
                     Ok(())
-                } else if function == "get_metrics_json" {
-                    let json = serde_json::json!({
-                        "total_llm_calls": self.total_llm_calls,
-                        "llm_total_ms": self.llm_total_ms,
-                    });
-                    if let Some(res) = result {
-                        self.store_value(res, RuntimeValue::Json(json))?;
-                    }
-                    Ok(())
-                } else if function == "metrics.get_json" {
+                } else if function == "get_metrics_json" || function == "metrics.get_json" {
                     let json = serde_json::json!({
                         "total_llm_calls": self.total_llm_calls,
                         "llm_total_ms": self.llm_total_ms,
@@ -3422,7 +3402,7 @@ impl ExecutionEnvironment {
                     }
                     Ok(())
                 } else if function == "fixtures.load" || function == "fixtures__load" {
-                    if args.len() < 1 {
+                    if args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "fixtures.load requires name".to_string(),
                         ));
@@ -3476,7 +3456,7 @@ impl ExecutionEnvironment {
                     }
                     Ok(())
                 } else if function == "fixtures.load_json" || function == "fixtures__load_json" {
-                    if args.len() < 1 {
+                    if args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "fixtures.load_json requires name".to_string(),
                         ));
@@ -3526,10 +3506,10 @@ impl ExecutionEnvironment {
                         RuntimeValue::String(s) => s.parse().unwrap_or(1),
                         _ => 1,
                     };
-                    let now_sec = (std::time::SystemTime::now()
+                    let now_sec = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap_or(std::time::Duration::from_secs(0))
-                        .as_secs()) as u64;
+                        .as_secs();
                     let entry = self.rate_limits.entry(name).or_insert((now_sec, 0));
                     if entry.0 != now_sec {
                         entry.0 = now_sec;
@@ -4036,7 +4016,7 @@ impl ExecutionEnvironment {
                     }
                     Ok(())
                 } else if function == "mcp__tool_call" || function == "mcp.tool_call" {
-                    if args.len() < 1 {
+                    if args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "mcp.tool_call requires name and optional args".to_string(),
                         ));
@@ -5425,7 +5405,7 @@ impl ExecutionEnvironment {
                                     to analyze the visual content and respond to: '{}'\n\
                                     \n\
                                     Simulated Response: Based on the image analysis, I can see various visual \
-                                    elements that would be described in detail by a multimodal AI model.", 
+                                    elements that would be described in detail by a multimodal AI model.",
                                     file_path, prompt)
                         }
                         "video" => {
@@ -5437,7 +5417,7 @@ impl ExecutionEnvironment {
                                     respond to: '{}'\n\
                                     \n\
                                     Simulated Response: Based on the video analysis, I would provide \
-                                    a comprehensive summary of the visual and audio content.", 
+                                    a comprehensive summary of the visual and audio content.",
                                     file_path, prompt)
                         }
                         "audio" => {
@@ -5448,7 +5428,7 @@ impl ExecutionEnvironment {
                                     this would be transcribed and analyzed to respond to: '{}'\n\
                                     \n\
                                     Simulated Response: [Transcribed audio content would appear here] \
-                                    followed by analysis based on the audio content.", 
+                                    followed by analysis based on the audio content.",
                                     file_path, prompt)
                         }
                         "document" => {
@@ -5459,7 +5439,7 @@ impl ExecutionEnvironment {
                                     this would extract and analyze the text content to respond to: '{}'\n\
                                     \n\
                                     Simulated Response: Based on the document analysis, I would provide \
-                                    insights derived from the extracted text content.", 
+                                    insights derived from the extracted text content.",
                                     file_path, prompt)
                         }
                         _ => {
@@ -5471,7 +5451,7 @@ impl ExecutionEnvironment {
                                     respond to: '{}'\n\
                                     \n\
                                     Simulated Response: I would attempt to process this file using \
-                                    appropriate methods based on its content and structure.", 
+                                    appropriate methods based on its content and structure.",
                                     file_path, file_extension, prompt)
                         }
                     };
@@ -5990,7 +5970,7 @@ impl ExecutionEnvironment {
                     if let Some(vt) = cfg
                         .get("validation_types")
                         .and_then(|v| v.as_array())
-                        .and_then(|a| a.get(0))
+                        .and_then(|a| a.first())
                         .and_then(|v| v.as_str())
                     {
                         self.validation_strategy = vt.to_string();
@@ -6042,7 +6022,7 @@ impl ExecutionEnvironment {
                         .and_then(|j| {
                             j.get("validation_types")
                                 .and_then(|v| v.as_array())
-                                .and_then(|a| a.get(0))
+                                .and_then(|a| a.first())
                                 .and_then(|v| v.as_str())
                         })
                         .unwrap_or(&self.validation_strategy);
@@ -6478,10 +6458,7 @@ impl ExecutionEnvironment {
                     let chunks_json = if let Some(ref vm) = self.vector_memory_system {
                         let chunks = vm.chunk_text(&text, &by, size, overlap);
                         serde_json::Value::Array(
-                            chunks
-                                .into_iter()
-                                .map(|s| serde_json::Value::String(s))
-                                .collect(),
+                            chunks.into_iter().map(serde_json::Value::String).collect(),
                         )
                     } else {
                         let tokens: Vec<&str> = text.split_whitespace().collect();
@@ -6497,9 +6474,7 @@ impl ExecutionEnvironment {
                             i += step;
                         }
                         serde_json::Value::Array(
-                            out.into_iter()
-                                .map(|s| serde_json::Value::String(s))
-                                .collect(),
+                            out.into_iter().map(serde_json::Value::String).collect(),
                         )
                     };
                     if let Some(res) = result {
@@ -6534,7 +6509,7 @@ impl ExecutionEnvironment {
                     {
                         Self::tokens_to_strings(&bpe, &ids)
                             .into_iter()
-                            .map(|s| serde_json::Value::String(s))
+                            .map(serde_json::Value::String)
                             .collect()
                     } else {
                         text.split_whitespace()
@@ -7547,7 +7522,7 @@ impl ExecutionEnvironment {
                     };
                     let ver = if args.len() > 2 {
                         match self.evaluate_expression(args[2].clone())? {
-                            RuntimeValue::Integer(i) => Some(i as i64),
+                            RuntimeValue::Integer(i) => Some(i),
                             RuntimeValue::String(s) => s.parse::<i64>().ok(),
                             _ => None,
                         }
@@ -7599,7 +7574,7 @@ impl ExecutionEnvironment {
                     };
                     let ver = if args.len() > 3 {
                         match self.evaluate_expression(args[3].clone())? {
-                            RuntimeValue::Integer(i) => Some(i as i64),
+                            RuntimeValue::Integer(i) => Some(i),
                             RuntimeValue::String(s) => s.parse::<i64>().ok(),
                             _ => None,
                         }
@@ -7737,33 +7712,6 @@ impl ExecutionEnvironment {
                     };
                     if let Some(res) = result {
                         self.store_value(res, RuntimeValue::Float(f))?;
-                    }
-                    Ok(())
-                } else if function == "get_env_or" {
-                    if args.len() != 2 {
-                        return Err(ExecutorError::ArgumentError(
-                            "get_env_or requires (name, default)".to_string(),
-                        ));
-                    }
-                    let name = match self.evaluate_expression(args[0].clone())? {
-                        RuntimeValue::String(s) => s,
-                        _ => {
-                            return Err(ExecutorError::ArgumentError(
-                                "name must be string".to_string(),
-                            ))
-                        }
-                    };
-                    let def = match self.evaluate_expression(args[1].clone())? {
-                        RuntimeValue::String(s) => s,
-                        _ => {
-                            return Err(ExecutorError::ArgumentError(
-                                "default must be string".to_string(),
-                            ))
-                        }
-                    };
-                    let val = std::env::var(&name).unwrap_or(def);
-                    if let Some(res) = result {
-                        self.store_value(res, RuntimeValue::String(val))?;
                     }
                     Ok(())
                 } else if function == "struct.new" || function == "struct__new" {
@@ -8066,13 +8014,8 @@ impl ExecutionEnvironment {
                     };
                     let mut out = String::with_capacity(s.len() * 3 / 2 + 1);
                     for ch in s.bytes() {
-                        let is_unreserved = (b'a'..=b'z').contains(&ch)
-                            || (b'A'..=b'Z').contains(&ch)
-                            || (b'0'..=b'9').contains(&ch)
-                            || ch == b'-'
-                            || ch == b'_'
-                            || ch == b'.'
-                            || ch == b'~';
+                        let is_unreserved =
+                            ch.is_ascii_alphanumeric() || matches!(ch, b'-' | b'_' | b'.' | b'~');
                         if is_unreserved {
                             out.push(ch as char);
                         } else if ch == b' ' {
@@ -8651,7 +8594,7 @@ impl ExecutionEnvironment {
                     }
                     Ok(())
                 } else if function == "time.now_iso8601" || function == "time__now_iso8601" {
-                    if args.len() != 0 {
+                    if !args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "time.now_iso8601()".to_string(),
                         ));
@@ -8662,7 +8605,7 @@ impl ExecutionEnvironment {
                     }
                     Ok(())
                 } else if function == "number.format" || function == "number__format" {
-                    if args.len() < 1 {
+                    if args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "number.format(n[,decimals])".to_string(),
                         ));
@@ -8701,7 +8644,10 @@ impl ExecutionEnvironment {
                     let mut hasher = Sha256::new();
                     hasher.update(s.as_bytes());
                     let out = hasher.finalize();
-                    let hex = out.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                    let mut hex = String::with_capacity(out.len() * 2);
+                    for b in &out {
+                        let _ = write!(&mut hex, "{:02x}", b);
+                    }
                     if let Some(res) = result {
                         self.store_value(res, RuntimeValue::String(hex))?;
                     }
@@ -10029,7 +9975,7 @@ impl ExecutionEnvironment {
         }
 
         let system_prompt = format!(
-            "You are an expert at intelligent conversation compression. Your task is to compress conversations while preserving meaning and context. Instructions:\n- {}", 
+            "You are an expert at intelligent conversation compression. Your task is to compress conversations while preserving meaning and context. Instructions:\n- {}",
             compression_instructions.join("\n- ")
         );
 

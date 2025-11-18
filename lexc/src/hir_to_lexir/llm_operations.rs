@@ -39,27 +39,27 @@ use crate::lexir::LexLiteral;
 
 impl ConversionContext {
     /// 🤖 Converts HIR ask expressions to LexIR ask instructions
-    /// 
+    ///
     /// This method handles the conversion of LLM ask expressions, including:
     /// - Attribute processing and extraction
     /// - Model and temperature parameter handling
     /// - Schema validation setup
     /// - System and user prompt configuration
-    /// 
+    ///
     /// ## Attribute Processing
-    /// 
+    ///
     /// The method extracts common LLM parameters:
     /// - `model`: Specific LLM model to use
     /// - `temperature`: Response randomness control
     /// - `max_tokens`: Maximum response length
     /// - `schema`: Output format validation
-    /// 
+    ///
     /// ## Debug Information
-    /// 
+    ///
     /// Includes debug output for troubleshooting attribute extraction and processing.
     pub fn add_ask_instruction(&mut self, ask: &HirAskExpression, result: ValueRef) -> Result<()> {
         let mut attributes = HashMap::new();
-        
+
         // Convert attributes from HIR to HashMap
         for attr in &ask.attributes {
             if let Some(value) = &attr.value {
@@ -68,15 +68,15 @@ impl ConversionContext {
                 attributes.insert(attr.name.clone(), "true".to_string());
             }
         }
-        
+
         println!("🔍 DEBUG HIR->LEXIR: attributes before extraction: {:?}", attributes);
-        
+
         // Extract LLM parameters from attributes
         let model = attributes.remove("model");
         let temperature = attributes.get("temperature").and_then(|t| t.parse::<f64>().ok());
-        
+
         println!("🔍 DEBUG HIR->LEXIR: extracted model: {:?}, temperature: {:?}", model, temperature);
-        
+
         let max_tokens = attributes.get("max_tokens").and_then(|t| t.parse::<u32>().ok());
 
         // Convert user_prompt to LexExpression if present
@@ -98,13 +98,13 @@ impl ConversionContext {
             schema: ask.output_schema_name.clone(),
             attributes,
         };
-        
+
         self.program.add_instruction(instruction);
         Ok(())
     }
-    
+
     /// 🛡️ Converts HIR ask_safe expressions to LexIR anti-hallucination instructions
-    /// 
+    ///
     /// This method handles the conversion of ask_safe expressions with advanced anti-hallucination
     /// validation features, including:
     /// - Basic LLM parameter extraction (model, temperature, max_tokens)
@@ -112,29 +112,29 @@ impl ConversionContext {
     /// - Confidence threshold and retry logic setup
     /// - Cross-reference model validation
     /// - Fact-checking integration
-    /// 
+    ///
     /// ## Anti-Hallucination Features
-    /// 
+    ///
     /// The method extracts specialized validation parameters:
     /// - `validation_strategy`: Type of validation (basic, ensemble, fact_check, comprehensive)
     /// - `confidence_threshold`: Minimum confidence score required (0.0-1.0)
     /// - `max_attempts`: Maximum retry attempts for low-confidence responses
     /// - `cross_reference_models`: List of models for cross-validation
     /// - `use_fact_checking`: Enable external fact-checking services
-    /// 
+    ///
     /// ## Validation Strategies
-    /// 
+    ///
     /// - **Basic**: Simple confidence scoring
     /// - **Ensemble**: Multi-model consensus validation
     /// - **Fact Check**: External fact verification
     /// - **Comprehensive**: All validation methods combined
-    /// 
+    ///
     /// ## Debug Information
-    /// 
+    ///
     /// Includes comprehensive debug output for troubleshooting validation setup.
     pub fn add_ask_safe_instruction(&mut self, ask_safe: &crate::hir::HirAskSafeExpression, result: ValueRef) -> Result<()> {
         let mut attributes = HashMap::new();
-        
+
         // Convert basic attributes from HIR to HashMap
         for attr in &ask_safe.attributes {
             if let Some(value) = &attr.value {
@@ -143,14 +143,14 @@ impl ConversionContext {
                 attributes.insert(attr.name.clone(), "true".to_string());
             }
         }
-        
+
         println!("🛡️ DEBUG HIR->LEXIR: ask_safe attributes before extraction: {:?}", attributes);
-        
+
         // Extract basic LLM parameters
         let model = attributes.remove("model");
         let temperature = attributes.get("temperature").and_then(|t| t.parse::<f64>().ok());
         let max_tokens = attributes.get("max_tokens").and_then(|t| t.parse::<u32>().ok());
-        
+
         // Extract anti-hallucination validation attributes
         let validation_strategy = ask_safe.validation_strategy.clone()
             .or_else(|| attributes.remove("validation"));
@@ -160,7 +160,7 @@ impl ConversionContext {
             .or_else(|| attributes.get("max_attempts").and_then(|t| t.parse::<u32>().ok()));
         let use_fact_checking = attributes.get("use_fact_checking")
             .and_then(|t| t.parse::<bool>().ok());
-        
+
         // Extract cross-reference models for ensemble validation
         let mut cross_reference_models = ask_safe.cross_reference_models.clone();
         if cross_reference_models.is_empty() {
@@ -171,8 +171,8 @@ impl ConversionContext {
                     .collect();
             }
         }
-        
-        println!("🛡️ DEBUG HIR->LEXIR: validation_strategy: {:?}, confidence_threshold: {:?}, max_attempts: {:?}", 
+
+        println!("🛡️ DEBUG HIR->LEXIR: validation_strategy: {:?}, confidence_threshold: {:?}, max_attempts: {:?}",
                 validation_strategy, confidence_threshold, max_attempts);
         println!("🛡️ DEBUG HIR->LEXIR: cross_reference_models: {:?}", cross_reference_models);
 
@@ -192,8 +192,8 @@ impl ConversionContext {
             cross_reference_models,
             use_fact_checking,
         };
-        
+
         self.program.add_instruction(instruction);
         Ok(())
     }
-} 
+}

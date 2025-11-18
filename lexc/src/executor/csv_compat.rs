@@ -13,4 +13,4 @@ impl WithHasHeaderExt for LazyCsvReader {
     fn with_has_header(self, has_header: bool) -> Self {
         self.has_header(has_header)
     }
-} 
+}

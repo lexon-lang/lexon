@@ -365,7 +365,7 @@ impl ExecutionEnvironment {
                             None,
                             &params,
                         );
-                        let r = if let Some(ms) = deadline {
+                        if let Some(ms) = deadline {
                             match tokio::time::timeout(Duration::from_millis(ms), fut).await {
                                 Ok(x) => x,
                                 Err(_) => Err(ExecutorError::RuntimeError(
@@ -374,8 +374,7 @@ impl ExecutionEnvironment {
                             }
                         } else {
                             fut.await
-                        };
-                        r
+                        }
                     }));
                 }
                 let mut joined_results = Vec::new();

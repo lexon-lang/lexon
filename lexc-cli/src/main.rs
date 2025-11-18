@@ -561,12 +561,13 @@ fn config_command(cargs: ConfigArgs) {
             std::env::var("LEXON_QDRANT_THROTTLE_MS").unwrap_or_else(|_| "(unset)".to_string()),
         ),
     );
+    let config_json = serde_json::Value::Object(map);
     if cargs.json {
-        println!("{}", serde_json::Value::Object(map).to_string());
+        println!("{}", config_json);
     } else {
         println!(
             "LEXON effective config:\n{}",
-            serde_json::to_string_pretty(&serde_json::Value::Object(map)).unwrap()
+            serde_json::to_string_pretty(&config_json).unwrap()
         );
     }
 }
@@ -669,7 +670,7 @@ fn compile_flow(args: &CompileArgs, rt: &TokioRuntime) -> Result<Option<f64>, St
             let extra_roots: Vec<std::path::PathBuf> = roots_env
                 .split(':')
                 .filter(|s| !s.is_empty())
-                .map(|s| std::path::PathBuf::from(s))
+                .map(std::path::PathBuf::from)
                 .collect();
             let mut to_load: Vec<std::path::PathBuf> = Vec::new();
             for node in &all {

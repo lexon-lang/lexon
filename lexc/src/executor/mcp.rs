@@ -9,6 +9,17 @@ use once_cell::sync::Lazy;
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::sync::RwLock;
+use tokio_tungstenite::tungstenite::Message;
+
+type WsSink = Box<
+    dyn futures_util::Sink<Message, Error = tokio_tungstenite::tungstenite::Error> + Unpin + Send,
+>;
+type WsStream = Box<
+    dyn futures_util::Stream<
+            Item = std::result::Result<Message, tokio_tungstenite::tungstenite::Error>,
+        > + Unpin
+        + Send,
+>;
 
 static MCP_TOOLS: Lazy<RwLock<HashMap<String, serde_json::Value>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
@@ -782,7 +793,7 @@ impl ExecutionEnvironment {
         result: Option<&ValueRef>,
     ) -> Result<(), ExecutorError> {
         // mcp.run_ws(url)
-        if args.len() < 1 {
+        if args.is_empty() {
             return Err(ExecutorError::ArgumentError(
                 "mcp.run_ws requires url".to_string(),
             ));
@@ -981,10 +992,7 @@ impl ExecutionEnvironment {
                         }
                         Ok(resp)
                     };
-                    let (mut ws_writer, mut ws_reader): (
-                        Box<dyn futures_util::Sink<Message, Error = tokio_tungstenite::tungstenite::Error> + Unpin + Send>,
-                        Box<dyn futures_util::Stream<Item = Result<Message, tokio_tungstenite::tungstenite::Error>> + Unpin + Send>
-                    ) = if let Some(cfg) = &tls_cfg {
+                    let (mut ws_writer, mut ws_reader): (WsSink, WsStream) = if let Some(cfg) = &tls_cfg {
                         let acceptor = tokio_rustls::TlsAcceptor::from(cfg.clone());
                         let tls_stream = acceptor.accept(stream).await.map_err(|e| ExecutorError::RuntimeError(format!("tls handshake: {}", e)))?;
                         let ws = accept_hdr_async(tls_stream, auth_checker).await.map_err(|e| ExecutorError::RuntimeError(format!("handshake error: {}", e)))?;

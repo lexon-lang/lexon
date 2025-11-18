@@ -1157,13 +1157,12 @@ impl LlmAdapter {
             let model_str = effective_model.to_string();
             if let Some(p) = self.model_provider_overrides.get(&model_str).cloned() {
                 provider = p;
-            } else if model_str.starts_with("hf:") {
+            } else if let Some(rest) = model_str.strip_prefix("hf:") {
                 provider = "huggingface".to_string();
-                // strip prefix
-                pending_model_update = Some(model_str[3..].to_string());
-            } else if model_str.starts_with("ollama:") {
+                pending_model_update = Some(rest.to_string());
+            } else if let Some(rest) = model_str.strip_prefix("ollama:") {
                 provider = "ollama".to_string();
-                pending_model_update = Some(model_str[7..].to_string());
+                pending_model_update = Some(rest.to_string());
             }
         }
 
@@ -1205,15 +1204,13 @@ impl LlmAdapter {
         }
 
         // Probe real health if not forced down
-        if provider != "simulated" {
-            if !self.maybe_probe_provider(&provider) {
-                println!(
-                    "[ROUTING] Provider '{}' unhealthy; falling back to simulated",
-                    provider
-                );
-                provider = "simulated".to_string();
-                effective_model = "simulated";
-            }
+        if provider != "simulated" && !self.maybe_probe_provider(&provider) {
+            println!(
+                "[ROUTING] Provider '{}' unhealthy; falling back to simulated",
+                provider
+            );
+            provider = "simulated".to_string();
+            effective_model = "simulated";
         }
 
         // Failure-rate policy: if too many recent failures, avoid provider
@@ -1656,7 +1653,7 @@ impl LlmAdapter {
         // Heuristic: try variations
         let mut out = String::new();
         if let Some(arr) = val.as_array() {
-            if let Some(first) = arr.get(0) {
+            if let Some(first) = arr.first() {
                 if let Some(txt) = first.get("generated_text").and_then(|x| x.as_str()) {
                     out = txt.to_string();
                 }
@@ -1886,10 +1883,12 @@ impl LlmAdapter {
                     // Parse Gemini structure: candidates[0].content.parts[0].text
                     if let Some(text) = resp_json
                         .get("candidates")
-                        .and_then(|c| c.get(0))
+                        .and_then(|c| c.as_array())
+                        .and_then(|c| c.first())
                         .and_then(|c0| c0.get("content"))
                         .and_then(|cnt| cnt.get("parts"))
-                        .and_then(|p| p.get(0))
+                        .and_then(|p| p.as_array())
+                        .and_then(|p| p.first())
                         .and_then(|p0| p0.get("text"))
                         .and_then(|t| t.as_str())
                     {

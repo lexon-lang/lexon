@@ -97,7 +97,7 @@ pub enum ValueRef {
 ///
 /// # Type Mapping
 /// - `Integer` → `LexType::Int`
-/// - `Float` → `LexType::Float`  
+/// - `Float` → `LexType::Float`
 /// - `String` → `LexType::String`
 /// - `Boolean` → `LexType::Bool`
 /// - `Array` → `LexType::List<T>`

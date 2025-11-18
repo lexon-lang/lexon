@@ -46,23 +46,23 @@ use std::collections::HashMap;
 
 impl ConversionContext {
     /// 🏗️ Converts HIR schema definitions to LexIR
-    /// 
+    ///
     /// This method handles the conversion of schema (struct/type) definitions, including:
     /// - Field type conversion and validation
     /// - Optional field handling with default values
     /// - Generic type parameter processing
     /// - Default value literal conversion
-    /// 
+    ///
     /// ## Field Processing
-    /// 
+    ///
     /// Each schema field is converted with:
     /// - Type name parsing and LexIR type conversion
     /// - Optional flag preservation
     /// - Default value extraction from HIR literals
     /// - Field name and metadata preservation
-    /// 
+    ///
     /// ## Type System Integration
-    /// 
+    ///
     /// The method integrates with the type system to:
     /// - Parse complex type expressions
     /// - Handle generic type parameters
@@ -70,10 +70,10 @@ impl ConversionContext {
     /// - Generate appropriate LexIR type representations
     pub fn convert_schema_definition(&mut self, schema_def: &HirSchemaDefinition) -> Result<()> {
         let mut fields = Vec::new();
-        
+
         for field in &schema_def.fields {
             let field_type = self.parse_lex_type(field.type_name.as_str());
-            
+
             let default_value = if let Some(box_node) = &field.default_value {
                 if let HirNode::Literal(lit) = &**box_node {
                 Some(self.convert_literal(lit)?)
@@ -83,7 +83,7 @@ impl ConversionContext {
             } else {
                 None
             };
-            
+
             fields.push(LexSchemaField {
                 name: field.name.clone(),
                 field_type,
@@ -91,32 +91,32 @@ impl ConversionContext {
                 default_value,
             });
         }
-        
+
         self.program.add_schema(LexSchemaDefinition {
             name: schema_def.name.clone(),
             fields,
         });
-        
+
         Ok(())
     }
-    
+
     /// 🔧 Converts HIR function definitions to LexIR
-    /// 
+    ///
     /// This method handles the conversion of function definitions, including:
     /// - Parameter type conversion and validation
     /// - Return type specification and parsing
     /// - Function body statement processing
     /// - Variable scoping and declaration handling
-    /// 
+    ///
     /// ## Parameter Processing
-    /// 
+    ///
     /// Function parameters are converted with:
     /// - Parameter name preservation
     /// - Type annotation parsing and conversion
     /// - Type validation and consistency checking
-    /// 
+    ///
     /// ## Body Conversion
-    /// 
+    ///
     /// Function bodies support all statement types:
     /// - Variable declarations with initialization
     /// - Assignments and expressions
@@ -130,10 +130,10 @@ impl ConversionContext {
         } else {
             LexType::Void
         };
-        
+
         // Convert the function body
         let mut body = Vec::new();
-        
+
         // Add Declare instructions for function parameters
         for param in &func_def.parameters {
             let declare_instr = LexInstruction::Declare {
@@ -143,7 +143,7 @@ impl ConversionContext {
             };
             body.push(declare_instr);
         }
-        
+
         for (i, statement) in func_def.body.iter().enumerate() {
             match statement {
                 HirNode::VariableDeclaration(var_decl) => {
@@ -157,17 +157,17 @@ impl ConversionContext {
                             let left_val = self.convert_node_to_value_ref(&bin_expr.left)?;
                             let right_val = self.convert_node_to_value_ref(&bin_expr.right)?;
                             let operator = match bin_expr.operator.as_str() {
-                                "+" => LexBinaryOperator::Add, "-" => LexBinaryOperator::Subtract, 
+                                "+" => LexBinaryOperator::Add, "-" => LexBinaryOperator::Subtract,
                                 "*" => LexBinaryOperator::Multiply, "/" => LexBinaryOperator::Divide,
-                                ">" => LexBinaryOperator::GreaterThan, "<" => LexBinaryOperator::LessThan, 
+                                ">" => LexBinaryOperator::GreaterThan, "<" => LexBinaryOperator::LessThan,
                                 ">=" => LexBinaryOperator::GreaterEqual, "<=" => LexBinaryOperator::LessEqual,
-                                "==" => LexBinaryOperator::Equal, "!=" => LexBinaryOperator::NotEqual, 
+                                "==" => LexBinaryOperator::Equal, "!=" => LexBinaryOperator::NotEqual,
                                 "&&" => LexBinaryOperator::And, "||" => LexBinaryOperator::Or,
                                 _ => return Err(HirToLexIrError::UnsupportedNode(format!("Unsupported binary operator: {}", bin_expr.operator))),
                             };
                             LexExpression::BinaryOp {
-                                operator, 
-                                left: Box::new(LexExpression::Value(left_val)), 
+                                operator,
+                                left: Box::new(LexExpression::Value(left_val)),
                                 right: Box::new(LexExpression::Value(right_val)),
                             }
                         },
@@ -225,17 +225,17 @@ impl ConversionContext {
                                 let left_val = self.convert_node_to_value_ref(&bin_expr.left)?;
                                 let right_val = self.convert_node_to_value_ref(&bin_expr.right)?;
                                 let operator = match bin_expr.operator.as_str() {
-                                    "+" => LexBinaryOperator::Add, "-" => LexBinaryOperator::Subtract, 
+                                    "+" => LexBinaryOperator::Add, "-" => LexBinaryOperator::Subtract,
                                     "*" => LexBinaryOperator::Multiply, "/" => LexBinaryOperator::Divide,
-                                    ">" => LexBinaryOperator::GreaterThan, "<" => LexBinaryOperator::LessThan, 
+                                    ">" => LexBinaryOperator::GreaterThan, "<" => LexBinaryOperator::LessThan,
                                     ">=" => LexBinaryOperator::GreaterEqual, "<=" => LexBinaryOperator::LessEqual,
-                                    "==" => LexBinaryOperator::Equal, "!=" => LexBinaryOperator::NotEqual, 
+                                    "==" => LexBinaryOperator::Equal, "!=" => LexBinaryOperator::NotEqual,
                                     "&&" => LexBinaryOperator::And, "||" => LexBinaryOperator::Or,
                                     _ => return Err(HirToLexIrError::UnsupportedNode(format!("Unsupported binary operator: {}", bin_expr.operator))),
                                 };
                                 Some(LexExpression::BinaryOp {
-                                    operator, 
-                                    left: Box::new(LexExpression::Value(left_val)), 
+                                    operator,
+                                    left: Box::new(LexExpression::Value(left_val)),
                                     right: Box::new(LexExpression::Value(right_val)),
                                 })
                             },
@@ -269,36 +269,36 @@ impl ConversionContext {
                 },
             }
         }
-        
+
         // Convert function parameters
         let parameters: Vec<(String, LexType)> = func_def.parameters.iter().map(|p| (p.name.clone(), self.parse_lex_type(&p.type_name))).collect();
-        
+
         self.program.add_function(LexFunction {
             name: func_def.name.clone(),
             return_type,
             parameters,
             body,
         });
-        
+
         Ok(())
     }
 
     /// 🔧 Converts HIR variable declarations to LexIR instructions
-    /// 
+    ///
     /// This method handles the conversion of variable declarations, including:
     /// - Type name processing and generic instantiation
     /// - Mutability flags (currently defaults to immutable)
     /// - Schema specialization for generic types
-    /// 
+    ///
     /// ## Generic Type Handling
-    /// 
+    ///
     /// If the variable has a generic type (e.g., `Vec<T>`), the method:
     /// 1. Splits the type into base and arguments
     /// 2. Attempts to instantiate a specialized schema
     /// 3. Uses the specialized name if available
-    /// 
+    ///
     /// ## Error Handling
-    /// 
+    ///
     /// Returns `Result<LexInstruction>` to handle type resolution failures.
     pub fn convert_variable_declaration(&mut self, var_decl: &HirVariableDeclaration) -> Result<LexInstruction> {
         let mut declared_type = var_decl.type_name.clone();
@@ -319,7 +319,7 @@ impl ConversionContext {
     }
 
     /// 🔄 Converts HIR nodes to LexIR value references
-    /// 
+    ///
     /// This is a helper method for node conversion that handles variable declarations
     /// specially by creating both declare and assign instructions.
     pub fn convert_node(&mut self, node: &HirNode) -> Result<ValueRef> {
@@ -342,23 +342,23 @@ impl ConversionContext {
     }
 
     /// 🔄 Converts For-In loops to basic LexIR instructions
-    /// 
+    ///
     /// This method handles the conversion of iterator-based loops, including:
     /// - Iterator variable setup and management
     /// - Iterable expression conversion
     /// - Loop body statement processing
     /// - Break and continue statement support
-    /// 
+    ///
     /// ## Iterator Support
-    /// 
+    ///
     /// For-in loops support various iterable types:
     /// - Arrays and lists
     /// - Range expressions
     /// - Custom iterable objects
     /// - Generator expressions
-    /// 
+    ///
     /// ## Body Processing
-    /// 
+    ///
     /// Loop bodies support all statement types:
     /// - Function calls and expressions
     /// - Variable assignments and declarations
@@ -380,15 +380,15 @@ impl ConversionContext {
                     // Convert arguments properly
                     let mut args_exprs = Vec::new();
                     for arg in &func_call.args {
-                        let val_ref = match arg { 
-                            HirNode::Identifier(var_name) => ValueRef::Named(var_name.clone()), 
-                            _ => self.convert_node_to_value_ref(arg)? 
+                        let val_ref = match arg {
+                            HirNode::Identifier(var_name) => ValueRef::Named(var_name.clone()),
+                            _ => self.convert_node_to_value_ref(arg)?
                         };
                         args_exprs.push(LexExpression::Value(val_ref));
                     }
                     let call_instr = LexInstruction::Call {
                         result: Some(ValueRef::Temp(temp_id)),
-                        function: func_call.function.clone(), 
+                        function: func_call.function.clone(),
                         args: args_exprs,
                     };
                     body_instrs.push(call_instr);
@@ -434,4 +434,4 @@ impl ConversionContext {
 
         Ok(())
     }
-} 
+}

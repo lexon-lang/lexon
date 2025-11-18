@@ -430,7 +430,7 @@ impl VectorMemorySystem {
                         if let Some(arr) = val
                             .get("data")
                             .and_then(|v| v.as_array())
-                            .and_then(|a| a.get(0))
+                            .and_then(|a| a.first())
                             .and_then(|o| o.get("embedding"))
                             .and_then(|e| e.as_array())
                         {
@@ -730,8 +730,8 @@ impl VectorMemorySystem {
         let mut stmt = self
             .db
             .prepare(
-                "SELECT d.id, d.path, d.content, e.embedding 
-             FROM documents d 
+                "SELECT d.id, d.path, d.content, e.embedding
+             FROM documents d
              JOIN embeddings e ON d.id = e.document_id
              ORDER BY d.created_at DESC",
             )

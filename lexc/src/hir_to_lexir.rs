@@ -778,7 +778,7 @@ impl ConversionContext {
             }
         }
 
-        println!("🛡️ DEBUG HIR->LEXIR: validation_strategy: {:?}, confidence_threshold: {:?}, max_attempts: {:?}", 
+        println!("🛡️ DEBUG HIR->LEXIR: validation_strategy: {:?}, confidence_threshold: {:?}, max_attempts: {:?}",
                 validation_strategy, confidence_threshold, max_attempts);
         println!(
             "🛡️ DEBUG HIR->LEXIR: cross_reference_models: {:?}",
@@ -2256,7 +2256,7 @@ pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
             // Accept harmless top-level literals and identifiers
             HirNode::Literal(_) | HirNode::Identifier(_) => {
                 let temp_id = context.temp_gen.next();
-                let val = context.convert_node_to_value_ref(&node)?;
+                let val = context.convert_node_to_value_ref(node)?;
                 let assign_instr = LexInstruction::Assign {
                     result: ValueRef::Temp(temp_id),
                     expr: LexExpression::Value(val),
@@ -2285,7 +2285,7 @@ pub fn convert_hir_to_lexir(hir_nodes: &[HirNode]) -> Result<LexProgram> {
             }
         }
         // Rewrite inside function bodies
-        for (_name, func) in &mut context.program.functions {
+        for func in context.program.functions.values_mut() {
             for instr in &mut func.body {
                 if let LexInstruction::Call { function, .. } = instr {
                     if !function.contains("__") {
