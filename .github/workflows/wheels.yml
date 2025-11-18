@@ -4,7 +4,14 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  guard:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Wheels workflow only runs via workflow_dispatch (current: ${{ github.event_name }})"
+
   build:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:

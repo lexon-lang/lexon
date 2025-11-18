@@ -1,17 +1,29 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use pyo3_asyncio::tokio as aio_tokio;
+use std::sync::OnceLock;
+use tokio::runtime::{Builder, Runtime};
 use tree_sitter::Parser;
 extern "C" {
     fn tree_sitter_lexon() -> tree_sitter::Language;
 }
 
 use lexc::lexir::LexProgram;
-use lexc::{Runtime, RuntimeConfig};
+use lexc::{Runtime as LexRuntime, RuntimeConfig};
+
+static TOKIO_RUNTIME: OnceLock<Runtime> = OnceLock::new();
+
+fn tokio_runtime() -> &'static Runtime {
+    TOKIO_RUNTIME.get_or_init(|| {
+        Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("failed to initialize tokio runtime for lexon_py")
+    })
+}
 
 #[pyclass]
 struct PyRuntime {
-    inner: Runtime,
+    inner: LexRuntime,
 }
 
 #[pymethods]
@@ -19,7 +31,7 @@ impl PyRuntime {
     #[new]
     fn new() -> Self {
         PyRuntime {
-            inner: Runtime::new(RuntimeConfig::default()),
+            inner: LexRuntime::new(RuntimeConfig::default()),
         }
     }
 
@@ -27,8 +39,8 @@ impl PyRuntime {
     fn execute_json(&mut self, lexir_json: &str) -> PyResult<()> {
         let program = LexProgram::from_json(lexir_json)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-        // Execute in Tokio runtime provided by pyo3_asyncio
-        aio_tokio::get_runtime()
+        // Execute using a shared Tokio runtime for the Python process
+        tokio_runtime()
             .block_on(self.inner.execute_program(&program))
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
@@ -61,14 +73,9 @@ fn compile_lx(source_code: &str) -> PyResult<String> {
 }
 
 #[pymodule]
-fn lexon_py(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    // Tokio runtime will be lazily initialized by pyo3_asyncio when first accessed
-
+fn lexon_py(_py: Python<'_>, m: Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRuntime>()?;
-    m.add_function(wrap_pyfunction!(compile_lx, m)?)?;
-
-    // Expose version
+    m.add_function(wrap_pyfunction!(compile_lx, m.clone())?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
-
     Ok(())
 }

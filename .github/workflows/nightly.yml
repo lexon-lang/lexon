@@ -6,7 +6,14 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  guard:
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Nightly smokes only run via schedule or workflow_dispatch (current: ${{ github.event_name }})"
+
   smokes:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     strategy:
       fail-fast: false
       matrix:
@@ -128,6 +135,7 @@ jobs:
     env:
       LEXON_SEED: "0"
     needs: smokes
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     defaults:
       run:
         working-directory: v1.0.0-rc.1

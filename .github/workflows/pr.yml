@@ -5,7 +5,14 @@ on:
     branches: [ main ]
 
 jobs:
+  guard:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "PR Gate only runs on pull_request events (current: ${{ github.event_name }})"
+
   build-and-goldens:
+    if: github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
