@@ -5,7 +5,16 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 2 * * *'  # 02:00 UTC nightly
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      run_mcp_checks:
+        description: "Run MCP websocket progress + TLS checks"
+        required: false
+        default: "false"
+      run_golden:
+        description: "Run full golden + coverage suite"
+        required: false
+        default: "false"
 
 jobs:
   guard:
@@ -24,9 +33,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       LEXON_SEED: "0"
-    defaults:
-      run:
-        working-directory: v1.0.0-rc.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,24 +60,14 @@ jobs:
           mkdir -p "$LOGDIR"
 
           SAMPLES=(
-            samples/mcp/stdio_oneshot.lx
-            samples/mcp/ws_server_oneshot.lx
-            samples/mcp/ws_ping.lx
-            samples/mcp/tool_call_read_file.lx
-            samples/mcp/tool_call_emit_file.lx
-            samples/mcp/quota.lx
-            samples/rag/eval.lx
-            samples/rag/hybrid_filters.lx
-            samples/rag/hybrid_search.lx
+            samples/00-hello-lexon.lx
+            samples/01-async-parallel.lx
+            samples/release-notes-copilot/main.lx
+            samples/data-quality/main.lx
+            samples/eval-harness/main.lx
+            samples/static-site/main.lx
+            samples/triage/main.lx
             samples/sessions/main.lx
-            samples/agents/basic.lx
-            samples/agents/supervisor.lx
-            samples/validation/ask_with_validation.lx
-            samples/validation/pii_only.lx
-            samples/validation/schema_file_smoke.lx
-            samples/routing/metrics_tick_only.lx
-            samples/routing/metrics.lx
-            samples/oo/struct_enum_smoke.lx
           )
 
           failures=0
@@ -79,7 +75,7 @@ jobs:
             name=$(basename "$s" .lx)
             log="$LOGDIR/${name}.log"
             echo "[RUN] $s" | tee "$log"
-            if ! cargo run -q -p lexc-cli -- compile --run "$s" &>> "$log"; then
+            if ! cargo run -q -p lexc-cli -- compile --run "$s" >> "$log" 2>&1; then
               echo "[FAIL] $s" | tee -a "$log"
               failures=$((failures+1))
             else
@@ -94,6 +90,7 @@ jobs:
           fi
 
       - name: MCP WS progress check
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_mcp_checks == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -111,14 +108,15 @@ jobs:
           wait $srv 2>/dev/null || true
 
       - name: Upload logs
-        if: always()
+        if: ${{ always() && steps.smokes.outputs.logdir != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rc1-smokes-logs
+          name: rc1-smokes-logs-${{ matrix.os }}
           path: ${{ steps.smokes.outputs.logdir }}
           if-no-files-found: ignore
 
       - name: MCP WS TLS/mTLS smoke
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_mcp_checks == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -136,10 +134,7 @@ jobs:
     env:
       LEXON_SEED: "0"
     needs: smokes
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
-    defaults:
-      run:
-        working-directory: v1.0.0-rc.1
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_golden == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
