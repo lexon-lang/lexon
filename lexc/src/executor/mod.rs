@@ -14,6 +14,7 @@ mod llm_functions;
 mod mcp;
 mod memory;
 mod memory_functions;
+mod structured_memory;
 #[cfg(test)]
 mod tests;
 pub mod vector_memory; // 🧠 Sprint D: Real vector memory system // 🚀 ASYNC-v1: Async operations
@@ -23,8 +24,10 @@ use crate::lexir::{
     LexBinaryOperator, LexExpression, LexFunction, LexInstruction, LexLiteral, LexProgram, TempId,
     ValueRef,
 };
+use chrono::{DateTime, Utc};
 // futures unused
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
+use uuid::Uuid;
 
 // Web search configuration (module scope)
 struct WebSearchConfig {
@@ -45,6 +48,7 @@ use std::fmt::{self, Write};
 use std::sync::Arc;
 
 use memory::MemoryManager;
+use structured_memory::{MemoryObject, RecallOptions, StructuredMemoryService};
 use vector_memory::VectorMemorySystem; // 🧠 Import real vector system
 #[derive(Debug, Clone)]
 pub(crate) struct ToolMeta {
@@ -420,6 +424,8 @@ pub struct ExecutionEnvironment {
     data_processor: data_processor::DataProcessor,
     /// Memory manager
     memory_manager: MemoryManager,
+    /// Structured semantic memory service
+    structured_memory: StructuredMemoryService,
     /// Legacy LLM adapter
     llm_adapter: llm_adapter::LlmAdapter,
     /// New LLM adapter (real-by-default)
@@ -474,12 +480,14 @@ impl ExecutionEnvironment {
         } else {
             None
         };
+        let structured_memory = StructuredMemoryService::new(config.memory_path.clone());
 
         Self {
             variables: HashMap::new(),
             temporaries: HashMap::new(),
             data_processor: data_processor::DataProcessor::new(),
             memory_manager: MemoryManager::new(),
+            structured_memory,
             llm_adapter: llm_adapter::LlmAdapter::new(),
             llm_adapter_new,
             config,
@@ -6051,6 +6059,389 @@ impl ExecutionEnvironment {
                         )?;
                     }
                     Ok(())
+                } else if function == "memory_space__create"
+                    || function == "memory_space.create"
+                {
+                    if args.is_empty() {
+                        return Err(ExecutorError::ArgumentError(
+                            "memory_space.create requires a name".to_string(),
+                        ));
+                    }
+                    let name = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "memory_space.create name",
+                    )?;
+                    let metadata = if args.len() > 1 {
+                        Some(Self::value_to_json(
+                            self.evaluate_expression(args[1].clone())?,
+                            "memory_space.create metadata",
+                        )?)
+                    } else {
+                        None
+                    };
+                    let summary = self.structured_memory.create_space(&name, metadata)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(summary))?;
+                    }
+                    Ok(())
+                } else if function == "memory_space__list"
+                    || function == "memory_space.list"
+                {
+                    if !args.is_empty() {
+                        return Err(ExecutorError::ArgumentError(
+                            "memory_space.list takes no arguments".to_string(),
+                        ));
+                    }
+                    let listing = self.structured_memory.list_spaces()?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(listing))?;
+                    }
+                    Ok(())
+                } else if function == "remember_structured"
+                    || function == "remember__structured"
+                {
+                    if args.len() < 2 {
+                        return Err(ExecutorError::ArgumentError(
+                            "remember_structured requires space and payload".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "remember_structured space",
+                    )?;
+                    let payload = Self::value_to_json(
+                        self.evaluate_expression(args[1].clone())?,
+                        "remember_structured payload",
+                    )?;
+                    let options = if args.len() > 2 {
+                        Self::value_to_json(
+                            self.evaluate_expression(args[2].clone())?,
+                            "remember_structured options",
+                        )?
+                    } else {
+                        Value::Null
+                    };
+                    let raw_text = payload
+                        .get("raw")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                        .ok_or_else(|| {
+                            ExecutorError::ArgumentError(
+                                "remember_structured payload requires 'raw'".to_string(),
+                            )
+                        })?;
+                    let fallback_kind = payload
+                        .get("kind")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("note")
+                        .to_string();
+                    let object = Self::build_memory_object_from_payload(
+                        &space,
+                        &fallback_kind,
+                        &raw_text,
+                        &payload,
+                        &options,
+                    )?;
+                    let auto_pin = options
+                        .as_object()
+                        .and_then(|m| m.get("auto_pin"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)
+                        || payload
+                            .get("pinned")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                    let stored = self
+                        .structured_memory
+                        .upsert_object(&space, object, auto_pin)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(stored))?;
+                    }
+                    Ok(())
+                } else if function == "remember_raw" || function == "remember__raw" {
+                    if args.len() < 3 {
+                        return Err(ExecutorError::ArgumentError(
+                            "remember_raw requires space, kind, and content".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "remember_raw space",
+                    )?;
+                    let kind = Self::value_to_string(
+                        self.evaluate_expression(args[1].clone())?,
+                        "remember_raw kind",
+                    )?;
+                    let raw_content = Self::value_to_string(
+                        self.evaluate_expression(args[2].clone())?,
+                        "remember_raw content",
+                    )?;
+                    let options = if args.len() > 3 {
+                        Self::value_to_json(
+                            self.evaluate_expression(args[3].clone())?,
+                            "remember_raw options",
+                        )?
+                    } else {
+                        Value::Null
+                    };
+                    let opts_obj = options.as_object();
+                    let model_hint = opts_obj
+                        .and_then(|m| m.get("model"))
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                        .or_else(|| std::env::var("LEXON_MEMORY_SEMANTIC_MODEL").ok())
+                        .or_else(|| self.config.llm_model.clone());
+                    let temperature = opts_obj
+                        .and_then(|m| m.get("temperature"))
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.2);
+                    let max_tokens = opts_obj
+                        .and_then(|m| m.get("max_tokens"))
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(900) as u32;
+                    let path_hint = opts_obj
+                        .and_then(|m| m.get("path_hint"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let project_hint = opts_obj
+                        .and_then(|m| m.get("project"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let tags_hint = opts_obj
+                        .and_then(|m| m.get("tags"))
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str())
+                                .map(|s| s.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        })
+                        .unwrap_or_default();
+                    let trimmed_raw = Self::clip_for_prompt(&raw_content, 3600);
+                    let system_prompt = "You are Lexon’s semantic memory layer. Output ONLY valid JSON that matches the provided schema. Do not include explanations.";
+                    let user_prompt = format!(
+                        "SPACE: {space}\nPROJECT: {project}\nKIND: {kind}\nPATH_HINT: {path_hint}\nTAGS_HINT: {tags}\nCONTENT (trimmed):\n<<<\n{content}\n>>>\nReturn JSON with keys path, kind, summary_micro, summary_short, summary_long, tags (array of lowercase strings), metadata (object), relevance (high|medium|low) and auto_pin (boolean).\nIf information is missing, infer the best values. NEVER return text outside JSON.",
+                        space = space,
+                        project = project_hint,
+                        kind = kind,
+                        path_hint = path_hint,
+                        tags = if tags_hint.is_empty() { "[]" } else { &tags_hint },
+                        content = trimmed_raw
+                    );
+                    let semantic_schema = r#"{"type":"object","required":["path","kind","summary_micro","summary_short","summary_long","tags","metadata","relevance"],"properties":{"path":{"type":"string"},"kind":{"type":"string"},"summary_micro":{"type":"string"},"summary_short":{"type":"string"},"summary_long":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"metadata":{"type":"object"},"relevance":{"type":"string"},"auto_pin":{"type":"boolean"}}}"#;
+                    let response = self.call_llm_blocking(
+                        model_hint.as_deref(),
+                        Some(temperature),
+                        system_prompt,
+                        &user_prompt,
+                        Some(semantic_schema),
+                        Some(max_tokens),
+                    )?;
+                    let semantic_block = Self::extract_json_object_block(&response).ok_or_else(
+                        || {
+                            ExecutorError::RuntimeError(
+                                "Semantic layer did not return JSON".to_string(),
+                            )
+                        },
+                    )?;
+                    let semantic_json: Value = serde_json::from_str(&semantic_block).map_err(
+                        |e| {
+                            ExecutorError::RuntimeError(format!(
+                                "Invalid semantic JSON: {}",
+                                e
+                            ))
+                        },
+                    )?;
+                    let object = Self::build_memory_object_from_payload(
+                        &space,
+                        &kind,
+                        &raw_content,
+                        &semantic_json,
+                        &options,
+                    )?;
+                    let auto_pin = opts_obj
+                        .and_then(|m| m.get("auto_pin"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)
+                        || semantic_json
+                            .get("auto_pin")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                    let stored = self
+                        .structured_memory
+                        .upsert_object(&space, object, auto_pin)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(stored))?;
+                    }
+                    Ok(())
+                } else if function == "pin_memory" {
+                    if args.len() < 2 {
+                        return Err(ExecutorError::ArgumentError(
+                            "pin_memory requires space and identifier".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "pin_memory space",
+                    )?;
+                    let identifier = Self::value_to_string(
+                        self.evaluate_expression(args[1].clone())?,
+                        "pin_memory identifier",
+                    )?;
+                    let pinned = self
+                        .structured_memory
+                        .toggle_pin(&space, &identifier, true)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(pinned))?;
+                    }
+                    Ok(())
+                } else if function == "unpin_memory" {
+                    if args.len() < 2 {
+                        return Err(ExecutorError::ArgumentError(
+                            "unpin_memory requires space and identifier".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "unpin_memory space",
+                    )?;
+                    let identifier = Self::value_to_string(
+                        self.evaluate_expression(args[1].clone())?,
+                        "unpin_memory identifier",
+                    )?;
+                    let pinned = self
+                        .structured_memory
+                        .toggle_pin(&space, &identifier, false)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(pinned))?;
+                    }
+                    Ok(())
+                } else if function == "set_memory_policy" {
+                    if args.len() < 2 {
+                        return Err(ExecutorError::ArgumentError(
+                            "set_memory_policy requires space and policy".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "set_memory_policy space",
+                    )?;
+                    let policy = Self::value_to_json(
+                        self.evaluate_expression(args[1].clone())?,
+                        "set_memory_policy policy",
+                    )?;
+                    let stored = self.structured_memory.set_policy(&space, policy)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(stored))?;
+                    }
+                    Ok(())
+                } else if function == "recall_context" {
+                    if args.len() < 2 {
+                        return Err(ExecutorError::ArgumentError(
+                            "recall_context requires space and topic".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "recall_context space",
+                    )?;
+                    let topic = Self::value_to_string(
+                        self.evaluate_expression(args[1].clone())?,
+                        "recall_context topic",
+                    )?;
+                    let options = if args.len() > 2 {
+                        Self::value_to_json(
+                            self.evaluate_expression(args[2].clone())?,
+                            "recall_context options",
+                        )?
+                    } else {
+                        Value::Null
+                    };
+                    let recall_opts =
+                        RecallOptions::from_value(if options.is_null() { None } else { Some(&options) });
+                    let mut bundle =
+                        self.structured_memory
+                            .recall_context(&space, &topic, &recall_opts)?;
+                    let llm_summary_model = options
+                        .as_object()
+                        .and_then(|m| m.get("model"))
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                        .or_else(|| self.config.llm_model.clone());
+                    if options
+                        .as_object()
+                        .and_then(|m| m.get("summarize_with_llm"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)
+                    {
+                        if let Some(sections) = bundle.get("sections").and_then(|v| v.as_array()) {
+                            let mut notes = String::new();
+                            for section in sections.iter().take(6) {
+                                let path = section
+                                    .get("path")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+                                let summary = section
+                                    .get("summary_short")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+                                notes.push_str(&format!("• {} — {}\n", path, summary));
+                            }
+                            if !notes.is_empty() {
+                                if let Ok(s) = self.call_llm_blocking(
+                                    llm_summary_model.as_deref(),
+                                    Some(0.3),
+                                    "You condense Lexon memory sections into two bullet points.",
+                                    &format!(
+                                        "Topic: {}\nSections:\n{}\nRespond with two concise bullets.",
+                                        topic, notes
+                                    ),
+                                    None,
+                                    Some(180),
+                                ) {
+                                    if let Value::Object(map) = &mut bundle {
+                                        map.insert("llm_summary".to_string(), Value::String(s));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(bundle))?;
+                    }
+                    Ok(())
+                } else if function == "recall_kind" {
+                    if args.len() < 2 {
+                        return Err(ExecutorError::ArgumentError(
+                            "recall_kind requires space and kind".to_string(),
+                        ));
+                    }
+                    let space = Self::value_to_string(
+                        self.evaluate_expression(args[0].clone())?,
+                        "recall_kind space",
+                    )?;
+                    let kind = Self::value_to_string(
+                        self.evaluate_expression(args[1].clone())?,
+                        "recall_kind kind",
+                    )?;
+                    let options = if args.len() > 2 {
+                        Self::value_to_json(
+                            self.evaluate_expression(args[2].clone())?,
+                            "recall_kind options",
+                        )?
+                    } else {
+                        Value::Null
+                    };
+                    let recall_opts =
+                        RecallOptions::from_value(if options.is_null() { None } else { Some(&options) });
+                    let results =
+                        self.structured_memory
+                            .recall_by_kind(&space, &kind, &recall_opts)?;
+                    if let Some(res) = result {
+                        self.store_value(res, RuntimeValue::Json(results))?;
+                    }
+                    Ok(())
                 } else if function == "memory_index.ingest" || function == "memory_index__ingest" {
                     // 🧠 Sprint D: memory_index.ingest(paths) -> int (REAL IMPLEMENTATION)
                     if args.len() != 1 {
@@ -10368,6 +10759,302 @@ impl ExecutionEnvironment {
                 Ok(accumulator.clone())
             }
         }
+    }
+
+    fn value_to_string(value: RuntimeValue, label: &str) -> Result<String> {
+        match value {
+            RuntimeValue::String(s) => Ok(s),
+            RuntimeValue::Json(Value::String(s)) => Ok(s),
+            _ => Err(ExecutorError::ArgumentError(format!(
+                "{} must be a string",
+                label
+            ))),
+        }
+    }
+
+    fn value_to_json(value: RuntimeValue, label: &str) -> Result<Value> {
+        match value {
+            RuntimeValue::Json(j) => Ok(j),
+            RuntimeValue::String(s) => serde_json::from_str(&s).map_err(|e| {
+                ExecutorError::ArgumentError(format!("{} must be valid JSON: {}", label, e))
+            }),
+            RuntimeValue::Null => Ok(Value::Null),
+            other => Err(ExecutorError::ArgumentError(format!(
+                "{} must be JSON (got {:?})",
+                label, other
+            ))),
+        }
+    }
+
+    fn call_llm_blocking(
+        &mut self,
+        model: Option<&str>,
+        temperature: Option<f64>,
+        system_prompt: &str,
+        user_prompt: &str,
+        schema: Option<&str>,
+        max_tokens: Option<u32>,
+    ) -> Result<String> {
+        if let Some(ref mut adapter) = self.llm_adapter_new {
+            let sys = system_prompt.to_string();
+            let user = user_prompt.to_string();
+            let schema_owned = schema.map(|s| s.to_string());
+            tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(async {
+                    adapter
+                        .call_llm_async(
+                            model,
+                            temperature,
+                            Some(&sys),
+                            Some(&user),
+                            schema_owned.as_deref(),
+                            max_tokens,
+                            &HashMap::new(),
+                        )
+                        .await
+                })
+            })
+        } else {
+            self.llm_adapter.call_llm(
+                model,
+                temperature,
+                Some(system_prompt),
+                Some(user_prompt),
+                schema,
+                max_tokens,
+                &HashMap::new(),
+            )
+        }
+    }
+
+    fn extract_json_object_block(text: &str) -> Option<String> {
+        let mut depth = 0usize;
+        let mut start: Option<usize> = None;
+        for (idx, ch) in text.char_indices() {
+            match ch {
+                '{' => {
+                    if depth == 0 {
+                        start = Some(idx);
+                    }
+                    depth += 1;
+                }
+                '}' => {
+                    if depth > 0 {
+                        depth -= 1;
+                        if depth == 0 {
+                            if let Some(s) = start {
+                                return Some(text[s..=idx].to_string());
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    fn clip_for_prompt(text: &str, max_chars: usize) -> String {
+        if text.len() <= max_chars {
+            text.to_string()
+        } else {
+            format!("{}...", &text[..max_chars])
+        }
+    }
+
+    fn fallback_summary(text: &str, sentences: usize) -> String {
+        let sanitized = text.replace('\n', " ");
+        let mut out: Vec<String> = Vec::new();
+        for chunk in sanitized
+            .split(|c| matches!(c, '.' | '!' | '?' | '•'))
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        {
+            out.push(chunk.to_string());
+            if out.len() >= sentences {
+                break;
+            }
+        }
+        if out.is_empty() {
+            Self::clip_for_prompt(text, 160)
+        } else {
+            out.join(". ")
+        }
+    }
+
+    fn clamp_summary(text: String, limit: usize) -> String {
+        if text.len() <= limit {
+            text
+        } else {
+            format!("{}...", &text[..limit])
+        }
+    }
+
+    fn collect_tags(
+        payload_tags: Option<&Value>,
+        option_tags: Option<&Value>,
+    ) -> Vec<String> {
+        let mut tags: Vec<String> = Vec::new();
+        if let Some(arr) = option_tags.and_then(|v| v.as_array()) {
+            for tag in arr {
+                if let Some(t) = tag.as_str() {
+                    let slug = t.trim().to_lowercase().replace(' ', "_");
+                    if !slug.is_empty() {
+                        tags.push(slug);
+                    }
+                }
+            }
+        }
+        if let Some(arr) = payload_tags.and_then(|v| v.as_array()) {
+            for tag in arr {
+                if let Some(t) = tag.as_str() {
+                    let slug = t.trim().to_lowercase().replace(' ', "_");
+                    if !slug.is_empty() {
+                        tags.push(slug);
+                    }
+                }
+            }
+        }
+        tags.sort();
+        tags.dedup();
+        tags
+    }
+
+    fn compose_metadata(space: &str, payload_meta: Option<&Value>, options: &Value) -> Value {
+        let mut map = Map::new();
+        if let Some(obj) = options.as_object() {
+            if let Some(extra) = obj.get("metadata").and_then(|v| v.as_object()) {
+                for (k, v) in extra {
+                    map.insert(k.clone(), v.clone());
+                }
+            }
+            if let Some(project) = obj.get("project").and_then(|v| v.as_str()) {
+                map.insert("project".to_string(), Value::String(project.to_string()));
+            }
+            if let Some(topic) = obj.get("topic").and_then(|v| v.as_str()) {
+                map.insert("topic".to_string(), Value::String(topic.to_string()));
+            }
+            if let Some(importance) = obj.get("importance").and_then(|v| v.as_str()) {
+                map.insert(
+                    "importance".to_string(),
+                    Value::String(importance.to_string()),
+                );
+            }
+        }
+        if let Some(Value::Object(meta)) = payload_meta {
+            for (k, v) in meta {
+                map.insert(k.clone(), v.clone());
+            }
+        }
+        map.insert("space".to_string(), Value::String(space.to_string()));
+        Value::Object(map)
+    }
+
+    fn build_memory_object_from_payload(
+        space: &str,
+        fallback_kind: &str,
+        raw: &str,
+        payload: &Value,
+        options: &Value,
+    ) -> Result<MemoryObject> {
+        if raw.trim().is_empty() {
+            return Err(ExecutorError::ArgumentError(
+                "memory content cannot be empty".to_string(),
+            ));
+        }
+        let now = Utc::now();
+        let path = payload
+            .get("path")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                options
+                    .as_object()
+                    .and_then(|m| m.get("path_hint"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+            })
+            .unwrap_or_else(|| format!("{}/{}", space, fallback_kind));
+        let kind = payload
+            .get("kind")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| fallback_kind.to_string());
+        let summary_micro = payload
+            .get("summary_micro")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| Self::fallback_summary(raw, 1));
+        let summary_short = payload
+            .get("summary_short")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| Self::fallback_summary(raw, 2));
+        let summary_long = payload
+            .get("summary_long")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| Self::fallback_summary(raw, 4));
+        let tags = Self::collect_tags(
+            payload.get("tags"),
+            options
+                .as_object()
+                .and_then(|m| m.get("tags")),
+        );
+        let metadata = Self::compose_metadata(space, payload.get("metadata"), options);
+        let relevance = payload
+            .get("relevance")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_lowercase())
+            .or_else(|| {
+                options
+                    .as_object()
+                    .and_then(|m| m.get("relevance"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_lowercase())
+            })
+            .unwrap_or_else(|| "medium".to_string());
+        let pinned = payload
+            .get("pinned")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let created_at = payload
+            .get("created_at")
+            .and_then(|v| v.as_str())
+            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or(now);
+        let updated_at = payload
+            .get("updated_at")
+            .and_then(|v| v.as_str())
+            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or(now);
+
+        Ok(MemoryObject {
+            id: payload
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("mem_{}", Uuid::new_v4())),
+            path,
+            kind,
+            raw: raw.to_string(),
+            summary_micro: Self::clamp_summary(summary_micro, 280),
+            summary_short: Self::clamp_summary(summary_short, 680),
+            summary_long: Self::clamp_summary(summary_long, 1600),
+            tags,
+            metadata,
+            relevance,
+            pinned,
+            created_at,
+            updated_at,
+        })
     }
 }
 

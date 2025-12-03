@@ -1,0 +1,50 @@
+// Structured semantic memory smoke sample
+
+let _ = memory_space.create(
+  "lexon_demo",
+  """
+{"reset": true}
+"""
+);
+
+let structured = remember_structured(
+  "lexon_demo",
+  """
+{
+  "id": "mem_demo_runtime",
+  "path": "lexon_demo/specs/runtime",
+  "kind": "guide",
+  "raw": "Lexon RC.1 runtime contract that explains how agents, tasks, and memory coordinate across MCP and RAG flows.",
+  "summary_micro": "Runtime guide for coordinating agents and memory.",
+  "summary_short": "Explains how Lexon orchestrates agents, tasks, and memory services with quotas, retries, and telemetry hooks.",
+  "summary_long": "Detailed overview of the runtime guide that covers agent registration, structured memory lookups, retry budgets, telemetry streams, and Lexon primitives required to wire MCP+RAG workflows safely.",
+  "tags": ["runtime", "guide", "spec"],
+  "metadata": {"project": "Lexon", "importance": "high"},
+  "relevance": "high",
+  "pinned": true,
+  "created_at": "2025-01-01T00:00:00Z",
+  "updated_at": "2025-01-01T00:00:00Z"
+}
+"""
+);
+
+let ctx = recall_context(
+  "lexon_demo",
+  "runtime",
+  """
+{"limit": 2, "include_raw": true, "freeze_clock": "2025-01-01T00:00:00Z"}
+"""
+);
+
+let guides = recall_kind(
+  "lexon_demo",
+  "guide",
+  """
+{"limit": 5}
+"""
+);
+
+print(structured);
+print(ctx);
+print(guides);
+

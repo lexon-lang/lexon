@@ -7,6 +7,7 @@ Lexon is an LLM‑native DSL with first‑class async/await, orchestration, anti
 - Orchestration: `ask`, `ask_parallel`, `ask_merge`, `ask_with_fallback`, `ask_ensemble`.
 - Anti‑hallucination (MVP): `ask_safe`, `confidence_score`, `validate_response`.
 - RAG Lite: `memory_index.ingest`, `memory_index.vector_search`, `auto_rag_context`.
+- Structured semantic memory: `memory_space.*`, `remember_*`, `recall_*` with pluggable tree/trie/graph backends (`basic`, `patricia`, `raptor`, `hybrid`).
 - Sessions: `session_summarize`, `session_compress`, `extract_key_points`, `context_window_manage`.
 - Multioutput: `ask_multioutput`, `get_multioutput_*`, `save_multioutput_file`, `load/save_binary_file`.
 - Iterators/FP: `enumerate`, `range`, `map`, `filter`, `reduce`, `zip`, `flatten`, `unique`, `sort`, `reverse`, `chunk`, `find`, `count`.

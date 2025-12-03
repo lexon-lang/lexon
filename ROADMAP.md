@@ -10,6 +10,10 @@ This roadmap reflects the v1.0.0-rc.1 scope and the current, implemented reality
   - Tokenization & Chunking: precise per‑model BPE for `rag.tokenize`/`rag.token_count`/`rag.chunk_tokens`; `memory_index.ingest_chunks`.
   - Retrieval: hybrid search (SQLite + Qdrant) with alpha weighting, metadata filters, pagination (offset/limit_factor), auto ensure collection, retries/backoff/throttle, raw Qdrant filter passthrough, schema/index helpers.
   - Post‑processing: `rag.rerank` (LLM), `rag.rerank_cross_encoder` (batched; env `LEXON_RERANK_BATCH_SIZE`/`LEXON_RERANK_MAX_ITEMS`), `rag.fuse_passages`, `rag.fuse_passages_semantic` (+citations), `rag.summarize_chunks`, `rag.optimize_window` (token‑budget), `memory_index.hybrid_search_page`/`hybrid_search_all`, `memory_index.hybrid_search_llm_rerank`.
+- Structured semantic memory:
+  - Canonical `memory_space` + `remember_*` + `recall_*` primitives with multi-level summaries, pinning, policies, deterministic resets/freeze_clock, and before-action hooks.
+  - Pluggable backends selectable via `LEXON_MEMORY_BACKEND=basic|patricia|raptor|hybrid` (basic tree, Patricia trie, RAPTOR clustering, GraphRAG/MemTree hybrid).
+  - Deterministic sample/golden (`samples/memory/structured_semantic.lx` + `golden/memory/structured_semantic.txt`) and real-provider verification (`remember_raw` + OpenAI).
 - Providers & Routing v2: OpenAI/Anthropic/Gemini + Generic (HuggingFace/Ollama/Custom), budgets/quotas, retries/backoff, health/capacity/failure‑rate, canary, decision metrics.
 - Agents & Orchestration: create/run/chain/parallel/cancel, deadlines/budgets, supervisor (state/list), tool registry with scopes/quotas, `on_tool_call`/`on_tool_error`, OTEL spans.
 - Anti‑hallucination & Quality: confidence scoring, validation (schema/PII) via `quality.*`, configurable gates.

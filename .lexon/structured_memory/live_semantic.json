@@ -1,0 +1,27 @@
+{
+  "name": "live_semantic",
+  "created_at": "2025-12-02T17:54:08.582298Z",
+  "updated_at": "2025-12-02T17:54:13.110502Z",
+  "metadata": {},
+  "policies": {},
+  "objects": [
+    {
+      "id": "mem_e1da1586-913c-4816-98aa-d1a137b82f69",
+      "path": "live/semantic/test",
+      "kind": "note",
+      "raw": "Lexon structured memory verification log for live LLM test",
+      "summary_micro": "Lexon memory verification log",
+      "summary_short": "Verification log for Lexon structured memory.",
+      "summary_long": "This document contains the verification log for Lexon's structured memory during a live LLM test, detailing the performance and outcomes of the test.",
+      "tags": [],
+      "metadata": {
+        "project": "Lexon",
+        "space": "live_semantic"
+      },
+      "relevance": "high",
+      "pinned": true,
+      "created_at": "2025-12-02T17:54:13.109846Z",
+      "updated_at": "2025-12-02T17:54:13.109846Z"
+    }
+  ]
+}
