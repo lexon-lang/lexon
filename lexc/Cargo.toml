@@ -33,7 +33,7 @@ tokio-rustls = "0.24"
 rustls-pemfile = "1.0"
 hmac = "0.12"
 sha2 = "0.10"
-chrono = { version = "0.4", default-features = true }
+chrono = { version = "0.4", default-features = true, features = ["serde"] }
 ## Removed unused deps (validated via cargo-udeps)
 # redis = { version = "0.23", features = ["tokio-comp"] }
 # futures = "0.3"

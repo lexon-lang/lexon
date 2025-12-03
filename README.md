@@ -14,6 +14,7 @@ Lexon is an LLM‑first programming language with first‑class async/await, LLM
 
 This RC includes:
 - Advanced RAG helpers (hybrid search, rerank, fuse, summarize).
+- Structured semantic memory (semantic layer + pluggable tree indexes with `memory_space.*`, `remember_*`, `recall_*`).
 - MCP stdio/WS servers with quotas/schemas/heartbeats/progress.
 - Web search builtin (configurable via `lexon.toml`) and HTTP data sources.
 - A focused stdlib (encoding/strings/math/regex/time/number/crypto/json).
@@ -61,6 +62,12 @@ cargo run -q -p lexc-cli -- compile --run samples/notes/organizer.lx
 ```
 Creates `output/notes_ActionItems.md` and `output/notes_Summary.json` from a small note set using `ask_merge("synthesize")` and `ask_safe`.
 
+- Structured memory smoke:
+```bash
+cargo run -q -p lexc-cli -- compile --run samples/memory/structured_semantic.lx
+```
+Resets a demo space, inserts a curated memory object, and prints the deterministic `recall_context` bundle (mirrors `golden/memory/structured_semantic.txt`).
+
 ### Configuration (summary)
 - Modes: simulated (default) vs real provider calls.
 - Defaults: loaded from `lexon.toml` → `[system] default_provider`, per‑provider defaults.
@@ -70,6 +77,7 @@ Creates `output/notes_ActionItems.md` and `output/notes_Summary.json` from a sma
 - Telemetry (optional): `LEXON_OTEL=1` and `OTEL_EXPORTER_OTLP_ENDPOINT`.
 - RAG/rerank knobs: `LEXON_RERANK_BATCH_SIZE`, `LEXON_RERANK_MAX_ITEMS`.
 - Vector store: `LEXON_VECTOR_BACKEND=sqlite_local|qdrant`, `LEXON_QDRANT_URL`, `LEXON_QDRANT_COLLECTION`, `LEXON_QDRANT_THROTTLE_MS`.
+- Structured memory backend: `LEXON_MEMORY_BACKEND=basic|patricia|raptor|hybrid`.
 - Sandbox: `--allow-exec` to enable `execute()`, `--workspace PATH` for absolute paths.
 
 See detailed configuration in `DOCUMENTATION.md`.

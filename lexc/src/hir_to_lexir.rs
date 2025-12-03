@@ -369,8 +369,17 @@ impl ConversionContext {
                     HirNode::Identifier(name) => {
                         let first = name.chars().next();
                         let stdmods = [
-                            "struct", "enum", "encoding", "strings", "math", "regex", "time",
-                            "number", "crypto", "json",
+                            "struct",
+                            "enum",
+                            "encoding",
+                            "strings",
+                            "math",
+                            "regex",
+                            "time",
+                            "number",
+                            "crypto",
+                            "json",
+                            "memory_space",
                         ];
                         stdmods.contains(&name.as_str())
                             || first.map(|c| c.is_ascii_uppercase()).unwrap_or(false)
@@ -1449,8 +1458,17 @@ impl ConversionContext {
                         HirNode::Identifier(name) => {
                             let first = name.chars().next();
                             let stdmods = [
-                                "struct", "enum", "encoding", "strings", "math", "regex", "time",
-                                "number", "crypto", "json",
+                                "struct",
+                                "enum",
+                                "encoding",
+                                "strings",
+                                "math",
+                                "regex",
+                                "time",
+                                "number",
+                                "crypto",
+                                "json",
+                                "memory_space",
                             ];
                             stdmods.contains(&name.as_str())
                                 || first.map(|c| c.is_ascii_uppercase()).unwrap_or(false)

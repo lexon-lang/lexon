@@ -409,6 +409,52 @@ Notes:
 - Ingest accepts CSV/JSON/NDJSON/text; builds a lightweight vector index.
 - `vector_search` returns top‑k matches with simple cosine similarity.
 
+### Structured semantic memory
+
+Signatures:
+- `memory_space.create(name: string, metadata_json?) -> summary_json`
+  - Metadata doubles as options; pass `{"reset": true}` to drop every object in that space.
+- `memory_space.list() -> [summary_json]`
+- `remember_structured(space: string, payload_json: string | json, options_json?) -> memory_json`
+- `remember_raw(space: string, kind: string, raw_text: string, options_json?) -> memory_json`
+- `pin_memory(space: string, path_or_id: string)`
+- `unpin_memory(space: string, path_or_id: string)`
+- `set_memory_policy(space: string, policy_json)`
+- `recall_context(space: string, topic: string, options_json?) -> bundle_json`
+- `recall_kind(space: string, kind: string, options_json?) -> [memory_json]`
+- Backends: select with `LEXON_MEMORY_BACKEND=basic|patricia|raptor|hybrid` (default `basic`). `patricia` favors path-prefix tries; `raptor` applies lightweight clustering; `hybrid` mixes GraphRAG-style entity overlap with clustering.
+
+Memory object schema:
+
+```
+{
+  "path": "project/module/topic",
+  "kind": "guide|config|decision|log|custom",
+  "raw": "... original text ...",
+  "summary_micro": "1-2 sentences",
+  "summary_short": "short paragraph / bullets",
+  "summary_long": "long-form abstract",
+  "tags": ["lowercase", "slugs"],
+  "metadata": {"project": "...", "importance": "high", "space": "..."},
+  "relevance": "high|medium|low",
+  "pinned": true|false,
+  "created_at": "RFC3339",
+  "updated_at": "RFC3339",
+  "id": "mem_* (optional override)"
+}
+```
+
+`remember_raw` calls the active LLM provider (configure `LEXON_MEMORY_SEMANTIC_MODEL` or set `options.model`) to fill this schema based on hints (`path_hint`, `project`, `tags`, `metadata`, `auto_pin`, etc.). `remember_structured` accepts a pre-built payload and auto-completes missing summaries from the `raw` text.
+
+Recall options (`options_json`) support:
+- `limit` (default 5), `raw_limit` (default 2), `include_raw`, `include_metadata`
+- `prefer_kinds`, `prefer_tags`
+- `require_high_relevance` (only return relevance = high)
+- `freeze_clock` (RFC3339 string) to override the `generated_at` timestamp for deterministic tests
+- `backend` (optional) to hint the service when per-call overrides ship in future releases (for now use `LEXON_MEMORY_BACKEND` env).
+
+Bundled context responses include `global_summary`, individual sections, and optional raw snippets ordered by relevance (pinned + high relevance first).
+
 ### 29. Data operations
 
 Signatures:
