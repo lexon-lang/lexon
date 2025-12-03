@@ -23,10 +23,10 @@ pub trait MemoryBackend: Send + Sync {
 
 pub fn build_backend(name: &str) -> Result<Box<dyn MemoryBackend>, String> {
     match name.to_ascii_lowercase().as_str() {
-        "basic" => Ok(Box::new(basic::BasicBackend::default())),
-        "patricia" => Ok(Box::new(patricia::PatriciaBackend::default())),
-        "hybrid" | "graphrag" => Ok(Box::new(hybrid::HybridBackend::default())),
-        "raptor" => Ok(Box::new(raptor::RaptorBackend::default())),
+        "basic" => Ok(Box::new(basic::BasicBackend)),
+        "patricia" => Ok(Box::new(patricia::PatriciaBackend)),
+        "hybrid" | "graphrag" => Ok(Box::new(hybrid::HybridBackend)),
+        "raptor" => Ok(Box::new(raptor::RaptorBackend)),
         other => Err(format!("unknown backend '{}'", other)),
     }
 }

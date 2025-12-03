@@ -10859,7 +10859,7 @@ impl ExecutionEnvironment {
         let sanitized = text.replace('\n', " ");
         let mut out: Vec<String> = Vec::new();
         for chunk in sanitized
-            .split(|c| matches!(c, '.' | '!' | '?' | '•'))
+            .split(['.', '!', '?', '•'])
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
         {

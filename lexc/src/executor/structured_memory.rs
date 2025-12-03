@@ -172,14 +172,13 @@ impl StructuredMemoryService {
         if self.base_dir.exists() {
             for entry in fs::read_dir(&self.base_dir)
                 .map_err(|e| ExecutorError::RuntimeError(format!("{}", e)))?
+                .flatten()
             {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.is_file() && path.extension().map(|e| e == "json").unwrap_or(false) {
-                        if let Ok(contents) = fs::read_to_string(&path) {
-                            if let Ok(space) = serde_json::from_str::<MemorySpaceFile>(&contents) {
-                                summaries.push(space_summary_value(&space));
-                            }
+                let path = entry.path();
+                if path.is_file() && path.extension().map(|e| e == "json").unwrap_or(false) {
+                    if let Ok(contents) = fs::read_to_string(&path) {
+                        if let Ok(space) = serde_json::from_str::<MemorySpaceFile>(&contents) {
+                            summaries.push(space_summary_value(&space));
                         }
                     }
                 }
@@ -194,7 +193,7 @@ impl StructuredMemoryService {
                 .get("updated_at")
                 .and_then(|v| v.as_str())
                 .unwrap_or_default();
-            bd.cmp(&ad)
+            bd.cmp(ad)
         });
         Ok(Value::Array(summaries))
     }
