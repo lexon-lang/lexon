@@ -33,16 +33,14 @@ impl MemoryBackend for HybridBackend {
         let mut scored: Vec<(f64, &MemoryObject)> = space
             .objects
             .iter()
-            .filter(|obj| !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high"))
+            .filter(|obj| {
+                !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high")
+            })
             .map(|obj| {
                 let base = basic_score(obj, topic, opts);
                 let tokens = entity_tokens(obj);
-                let graph_bonus = graph_overlap_score(
-                    &tokens,
-                    &topic_tokens,
-                    &pinned_tokens,
-                    &entity_freq,
-                );
+                let graph_bonus =
+                    graph_overlap_score(&tokens, &topic_tokens, &pinned_tokens, &entity_freq);
                 (base + graph_bonus, obj)
             })
             .filter(|(score, _)| *score > 0.0)
@@ -168,4 +166,3 @@ fn graph_overlap_score(
     }
     score
 }
-

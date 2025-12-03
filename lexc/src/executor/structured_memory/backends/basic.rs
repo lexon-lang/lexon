@@ -20,7 +20,9 @@ impl MemoryBackend for BasicBackend {
         let mut scored: Vec<(f64, &MemoryObject)> = space
             .objects
             .iter()
-            .filter(|obj| !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high"))
+            .filter(|obj| {
+                !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high")
+            })
             .map(|obj| (score_object(obj, topic, opts), obj))
             .filter(|(s, _)| *s > 0.0)
             .collect();
@@ -88,4 +90,3 @@ pub fn score_object(obj: &MemoryObject, topic: &str, opts: &RecallOptions) -> f6
     }
     score
 }
-

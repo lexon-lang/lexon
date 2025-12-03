@@ -1,4 +1,6 @@
-use super::{basic::score_object as basic_score, MemoryBackend, MemoryObject, MemorySpaceFile, RecallOptions};
+use super::{
+    basic::score_object as basic_score, MemoryBackend, MemoryObject, MemorySpaceFile, RecallOptions,
+};
 
 #[derive(Default)]
 pub struct PatriciaBackend;
@@ -21,7 +23,9 @@ impl MemoryBackend for PatriciaBackend {
         let mut scored: Vec<(f64, &MemoryObject)> = space
             .objects
             .iter()
-            .filter(|obj| !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high"))
+            .filter(|obj| {
+                !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high")
+            })
             .map(|obj| {
                 let base = basic_score(obj, topic, opts);
                 let prefix_bonus = patricia_prefix_depth(&obj.path, &topic_parts) as f64 * 2.0;
@@ -117,4 +121,3 @@ fn patricia_prefix_depth(path: &str, topic_parts: &[String]) -> usize {
     }
     depth
 }
-

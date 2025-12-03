@@ -1,4 +1,6 @@
-use super::{basic::score_object as basic_score, MemoryBackend, MemoryObject, MemorySpaceFile, RecallOptions};
+use super::{
+    basic::score_object as basic_score, MemoryBackend, MemoryObject, MemorySpaceFile, RecallOptions,
+};
 
 /// Simplified RAPTOR-style backend that clusters memories by tags and recency.
 #[derive(Default)]
@@ -25,11 +27,13 @@ impl MemoryBackend for RaptorBackend {
         let mut scored: Vec<(f64, &MemoryObject)> = space
             .objects
             .iter()
-            .filter(|obj| !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high"))
+            .filter(|obj| {
+                !opts.require_high_relevance || obj.relevance.eq_ignore_ascii_case("high")
+            })
             .map(|obj| {
                 let base = basic_score(obj, topic, opts);
-                let cluster_bonus =
-                    cluster_overlap(obj, &topic_tokens).max(cluster_overlap(obj, &opts.prefer_tags));
+                let cluster_bonus = cluster_overlap(obj, &topic_tokens)
+                    .max(cluster_overlap(obj, &opts.prefer_tags));
                 (base + cluster_bonus, obj)
             })
             .filter(|(s, _)| *s > 0.0)
@@ -62,7 +66,10 @@ impl MemoryBackend for RaptorBackend {
             .map(|obj| {
                 let recency = obj.updated_at.timestamp_millis() as f64;
                 let cluster = cluster_overlap(obj, &opts.prefer_tags);
-                ((recency / 1_000_000_000f64) + cluster + if obj.pinned { 5.0 } else { 0.0 }, obj)
+                (
+                    (recency / 1_000_000_000f64) + cluster + if obj.pinned { 5.0 } else { 0.0 },
+                    obj,
+                )
             })
             .collect();
         matches.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
@@ -76,10 +83,7 @@ fn cluster_overlap(obj: &MemoryObject, tokens: &[String]) -> f64 {
     }
     let mut score = 0.0;
     for token in tokens {
-        if obj
-            .tags
-            .iter()
-            .any(|tag| tag.to_lowercase() == *token)
+        if obj.tags.iter().any(|tag| tag.to_lowercase() == *token)
             || obj.summary_long.to_lowercase().contains(token)
         {
             score += 1.5;
@@ -87,4 +91,3 @@ fn cluster_overlap(obj: &MemoryObject, tokens: &[String]) -> f64 {
     }
     score
 }
-

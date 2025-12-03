@@ -30,4 +30,3 @@ pub fn build_backend(name: &str) -> Result<Box<dyn MemoryBackend>, String> {
         other => Err(format!("unknown backend '{}'", other)),
     }
 }
-

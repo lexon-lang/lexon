@@ -89,9 +89,7 @@ impl RecallOptions {
             if let Some(include_metadata) = map.get("include_metadata").and_then(|v| v.as_bool()) {
                 opts.include_metadata = include_metadata;
             }
-            if let Some(require_high) = map
-                .get("require_high_relevance")
-                .and_then(|v| v.as_bool())
+            if let Some(require_high) = map.get("require_high_relevance").and_then(|v| v.as_bool())
             {
                 opts.require_high_relevance = require_high;
             }
@@ -138,10 +136,7 @@ impl StructuredMemoryService {
             );
             build_backend("basic").expect("basic backend must exist")
         });
-        println!(
-            "[structured_memory] backend selected: {}",
-            backend.id()
-        );
+        println!("[structured_memory] backend selected: {}", backend.id());
         Self {
             base_dir: structured,
             backend,
@@ -157,10 +152,7 @@ impl StructuredMemoryService {
         self.ensure_parent_dir()?;
         let mut space = self.read_space(&name)?;
         if let Some(mut meta) = metadata {
-            let reset = meta
-                .get("reset")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
+            let reset = meta.get("reset").and_then(|v| v.as_bool()).unwrap_or(false);
             if reset {
                 space.objects.clear();
                 if let Some(obj) = meta.as_object_mut() {
@@ -236,11 +228,7 @@ impl StructuredMemoryService {
             .map_err(|e| ExecutorError::RuntimeError(format!("Failed to serialize object: {}", e)))
     }
 
-    pub fn set_policy(
-        &self,
-        raw_space: &str,
-        policy: Value,
-    ) -> Result<Value, ExecutorError> {
+    pub fn set_policy(&self, raw_space: &str, policy: Value) -> Result<Value, ExecutorError> {
         let space_name = Self::canonical_space_name(raw_space);
         self.ensure_parent_dir()?;
         let mut space = self.read_space(&space_name)?;
@@ -276,8 +264,9 @@ impl StructuredMemoryService {
         }
         space.updated_at = Utc::now();
         self.write_space(&space)?;
-        serde_json::to_value(target.unwrap())
-            .map_err(|e| ExecutorError::RuntimeError(format!("Failed to serialize pin result: {}", e)))
+        serde_json::to_value(target.unwrap()).map_err(|e| {
+            ExecutorError::RuntimeError(format!("Failed to serialize pin result: {}", e))
+        })
     }
 
     pub fn recall_context(
@@ -349,8 +338,9 @@ impl StructuredMemoryService {
 
     fn ensure_parent_dir(&self) -> Result<(), ExecutorError> {
         if let Some(parent) = self.base_dir.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| ExecutorError::RuntimeError(format!("Failed to init memory dir: {}", e)))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                ExecutorError::RuntimeError(format!("Failed to init memory dir: {}", e))
+            })?;
         }
         fs::create_dir_all(&self.base_dir)
             .map_err(|e| ExecutorError::RuntimeError(format!("Failed to init memory dir: {}", e)))
@@ -359,10 +349,12 @@ impl StructuredMemoryService {
     fn read_space(&self, name: &str) -> Result<MemorySpaceFile, ExecutorError> {
         let path = self.space_path(name);
         if path.exists() {
-            let text = fs::read_to_string(&path)
-                .map_err(|e| ExecutorError::RuntimeError(format!("Failed to read space '{}': {}", name, e)))?;
-            serde_json::from_str::<MemorySpaceFile>(&text)
-                .map_err(|e| ExecutorError::RuntimeError(format!("Invalid space '{}': {}", name, e)))
+            let text = fs::read_to_string(&path).map_err(|e| {
+                ExecutorError::RuntimeError(format!("Failed to read space '{}': {}", name, e))
+            })?;
+            serde_json::from_str::<MemorySpaceFile>(&text).map_err(|e| {
+                ExecutorError::RuntimeError(format!("Invalid space '{}': {}", name, e))
+            })
         } else {
             Ok(MemorySpaceFile {
                 name: name.to_string(),
@@ -378,14 +370,19 @@ impl StructuredMemoryService {
     fn write_space(&self, space: &MemorySpaceFile) -> Result<(), ExecutorError> {
         let path = self.space_path(&space.name);
         let text = serde_json::to_string_pretty(space).map_err(|e| {
-            ExecutorError::RuntimeError(format!("Failed to serialize space '{}': {}", space.name, e))
+            ExecutorError::RuntimeError(format!(
+                "Failed to serialize space '{}': {}",
+                space.name, e
+            ))
         })?;
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| ExecutorError::RuntimeError(format!("Failed to init memory dir: {}", e)))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                ExecutorError::RuntimeError(format!("Failed to init memory dir: {}", e))
+            })?;
         }
-        fs::write(&path, text)
-            .map_err(|e| ExecutorError::RuntimeError(format!("Failed to persist space '{}': {}", space.name, e)))
+        fs::write(&path, text).map_err(|e| {
+            ExecutorError::RuntimeError(format!("Failed to persist space '{}': {}", space.name, e))
+        })
     }
 
     fn space_path(&self, name: &str) -> PathBuf {
@@ -492,4 +489,3 @@ fn render_global_summary(sections: &[Value], topic: &str) -> String {
     }
     lines.join("\n")
 }
-

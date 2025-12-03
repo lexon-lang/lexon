@@ -6059,9 +6059,7 @@ impl ExecutionEnvironment {
                         )?;
                     }
                     Ok(())
-                } else if function == "memory_space__create"
-                    || function == "memory_space.create"
-                {
+                } else if function == "memory_space__create" || function == "memory_space.create" {
                     if args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "memory_space.create requires a name".to_string(),
@@ -6084,9 +6082,7 @@ impl ExecutionEnvironment {
                         self.store_value(res, RuntimeValue::Json(summary))?;
                     }
                     Ok(())
-                } else if function == "memory_space__list"
-                    || function == "memory_space.list"
-                {
+                } else if function == "memory_space__list" || function == "memory_space.list" {
                     if !args.is_empty() {
                         return Err(ExecutorError::ArgumentError(
                             "memory_space.list takes no arguments".to_string(),
@@ -6097,9 +6093,7 @@ impl ExecutionEnvironment {
                         self.store_value(res, RuntimeValue::Json(listing))?;
                     }
                     Ok(())
-                } else if function == "remember_structured"
-                    || function == "remember__structured"
-                {
+                } else if function == "remember_structured" || function == "remember__structured" {
                     if args.len() < 2 {
                         return Err(ExecutorError::ArgumentError(
                             "remember_structured requires space and payload".to_string(),
@@ -6238,21 +6232,16 @@ impl ExecutionEnvironment {
                         Some(semantic_schema),
                         Some(max_tokens),
                     )?;
-                    let semantic_block = Self::extract_json_object_block(&response).ok_or_else(
-                        || {
+                    let semantic_block =
+                        Self::extract_json_object_block(&response).ok_or_else(|| {
                             ExecutorError::RuntimeError(
                                 "Semantic layer did not return JSON".to_string(),
                             )
-                        },
-                    )?;
-                    let semantic_json: Value = serde_json::from_str(&semantic_block).map_err(
-                        |e| {
-                            ExecutorError::RuntimeError(format!(
-                                "Invalid semantic JSON: {}",
-                                e
-                            ))
-                        },
-                    )?;
+                        })?;
+                    let semantic_json: Value =
+                        serde_json::from_str(&semantic_block).map_err(|e| {
+                            ExecutorError::RuntimeError(format!("Invalid semantic JSON: {}", e))
+                        })?;
                     let object = Self::build_memory_object_from_payload(
                         &space,
                         &kind,
@@ -6358,8 +6347,11 @@ impl ExecutionEnvironment {
                     } else {
                         Value::Null
                     };
-                    let recall_opts =
-                        RecallOptions::from_value(if options.is_null() { None } else { Some(&options) });
+                    let recall_opts = RecallOptions::from_value(if options.is_null() {
+                        None
+                    } else {
+                        Some(&options)
+                    });
                     let mut bundle =
                         self.structured_memory
                             .recall_context(&space, &topic, &recall_opts)?;
@@ -6378,10 +6370,8 @@ impl ExecutionEnvironment {
                         if let Some(sections) = bundle.get("sections").and_then(|v| v.as_array()) {
                             let mut notes = String::new();
                             for section in sections.iter().take(6) {
-                                let path = section
-                                    .get("path")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("");
+                                let path =
+                                    section.get("path").and_then(|v| v.as_str()).unwrap_or("");
                                 let summary = section
                                     .get("summary_short")
                                     .and_then(|v| v.as_str())
@@ -6433,8 +6423,11 @@ impl ExecutionEnvironment {
                     } else {
                         Value::Null
                     };
-                    let recall_opts =
-                        RecallOptions::from_value(if options.is_null() { None } else { Some(&options) });
+                    let recall_opts = RecallOptions::from_value(if options.is_null() {
+                        None
+                    } else {
+                        Some(&options)
+                    });
                     let results =
                         self.structured_memory
                             .recall_by_kind(&space, &kind, &recall_opts)?;
@@ -10890,10 +10883,7 @@ impl ExecutionEnvironment {
         }
     }
 
-    fn collect_tags(
-        payload_tags: Option<&Value>,
-        option_tags: Option<&Value>,
-    ) -> Vec<String> {
+    fn collect_tags(payload_tags: Option<&Value>, option_tags: Option<&Value>) -> Vec<String> {
         let mut tags: Vec<String> = Vec::new();
         if let Some(arr) = option_tags.and_then(|v| v.as_array()) {
             for tag in arr {
@@ -11002,9 +10992,7 @@ impl ExecutionEnvironment {
             .unwrap_or_else(|| Self::fallback_summary(raw, 4));
         let tags = Self::collect_tags(
             payload.get("tags"),
-            options
-                .as_object()
-                .and_then(|m| m.get("tags")),
+            options.as_object().and_then(|m| m.get("tags")),
         );
         let metadata = Self::compose_metadata(space, payload.get("metadata"), options);
         let relevance = payload
