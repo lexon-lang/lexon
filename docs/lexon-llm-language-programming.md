@@ -186,11 +186,12 @@ Use real providers by exporting API keys and editing `lexon.toml` (`default_prov
 
 ## 8. Roadmap snapshot
 
-- More backends (TemporalTree decay, external GraphRAG adapters).
+- More structured-memory backends (TemporalTree decay, external GraphRAG adapters).
 - Per-call backend overrides (`{"backend": "patricia"}` hints).
 - Cross-project memory links and role-based visibility.
-- Memory inspector tooling (`lexc memory browse`).
+- Memory inspector tooling (`lexc memory browse`) and better introspection.
 - Bigger MCP demos that mix structured memory, agents, RAG, multioutput.
+- Plus the broader items already listed in `ROADMAP.md`: Qdrant presets, telemetry dashboards, provider expansion, IR optimizations, richer stdlib/networking, sockets, CI hardening, and DX tooling.
 
 ---
 
