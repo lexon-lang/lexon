@@ -6,7 +6,7 @@ Every time I tried to build a serious LLM workflow, I ended up juggling scripts,
 
 ## 1. Lexon in three minutes
 
-If you’ve ever wired prompts with bash scripts or YAML automations, think of Lexon as the opposite experience: real language ergonomics plus LLM-first primitives.
+If you’re tired of stitching together Python notebooks, LangChain pipelines, or orchestration DAGs just to run prompts with context and validation, Lexon is the opposite experience: a real language with LLM-first primitives, governance, and structured memory built in.
 
 - **Language & control flow**: modules (`modules/` roots + aliasing), `if/while/for/match`, public/private functions, typed/inferred variables, predictable truthiness, JSON-like structs, error primitives (`Ok/Error/is_ok/unwrap`).
 - **Async runtime**: `task.spawn/await`, `join_all`, `join_any`, `select_any`, channels, rate limiter, retry policies, timeouts, cooperative cancellation.
