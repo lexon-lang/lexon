@@ -47,6 +47,12 @@ This roadmap reflects the v1.0.0-rc.1 scope and the current, implemented reality
 - MCP/agents: contract versioning, backpressure and streaming tokens, reproducible multi‑agent examples.
 - Python ecosystem: MCP tools for pandas/numpy a corto plazo; puente Arrow/builtins `py.*` a medio plazo.
 - CI hardening: property‑based tests, fuzz gates, deterministic seeds y budgets, smoke opcionales “real‑mode” con secrets.
+- Structured memory roadmap:
+  - Additional backends (TemporalTree decay, external GraphRAG adapters).
+  - Per-call backend overrides (`{"backend": "patricia"}` hints) for `recall_context`/`recall_kind`.
+  - Cross-project memory links and role-based visibility controls.
+  - Memory inspector tooling (`lexc memory browse`) and richer space introspection.
+  - Expanded MCP demos that mix structured memory, agents, RAG, and multioutput flows.
 
 <!-- Auxiliary operational notes were removed to keep the roadmap strictly prospective. -->
 
