@@ -20,8 +20,8 @@ Raw assets ──> Semantic layer ──> MemoryObject ──> Backend (basic/pa
    - Input: raw text + hints (`path_hint`, `kind`, `project`, `tags`, `metadata`).
    - Output: normalized `MemoryObject`.
    - Implementations: `remember_raw` (LLM-assisted) or `remember_structured` (pre-built JSON).
-2. **Storage Layer (PLuggable Backend)**
-   - Persists `MemorySpaceFile` under `.lexon/structured_memory/<space>.json`.
+2. **Storage Layer (Pluggable Backend)**
+   - Persists `MemorySpaceFile` under `.lexon/structured_memory/<space>.json` (see `space_path` helper). Each file contains the entire space, sorted deterministically by `updated_at`.
    - Provides ordering/scoring for topics (`order_for_topic`) and kinds (`order_for_kind`).
    - Backends: `basic`, `patricia`, `raptor`, `hybrid (GraphRAG/MemTree)`.
 3. **Runtime Layer**
@@ -58,7 +58,7 @@ Raw assets ──> Semantic layer ──> MemoryObject ──> Backend (basic/pa
 | `memory_space.create(name, metadata_json?)` | Initializes/resets a space. Pass `{"reset": true}` to wipe contents (deterministic tests). |
 | `memory_space.list()` | Lists all spaces (summaries). |
 | `remember_structured(space, payload_json, options?)` | Ingests a pre-built `MemoryObject`. Auto-fills missing summaries from `raw`. |
-| `remember_raw(space, kind, raw_text, options?)` | Calls the semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to infer path, summaries, tags, relevance, `auto_pin`. Options: `model`, `temperature`, `max_tokens`, `path_hint`, `project`, `tags`, `metadata`, `auto_pin`. |
+| `remember_raw(space, kind, raw_text, options?)` | Calls the semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to infer path, summaries, tags, relevance, `auto_pin`. Options: `model`, `temperature`, `max_tokens`, `path_hint`, `project`, `tags`, `metadata`, `auto_pin`. Falls back to `options.model` → `LEXON_MEMORY_SEMANTIC_MODEL` → `config.llm_model`. |
 | `pin_memory(space, id_or_path)` / `unpin_memory(...)` | Toggle `pinned`. |
 | `set_memory_policy(space, policy_json)` | Persist project-specific auto-pin/retention/visibility rules. |
 | `recall_context(space, topic, options_json?)` | Returns a bundle: `global_summary`, `sections[]`, optional `raw[]`, `generated_at`. Options: `limit`, `raw_limit`, `include_raw`, `include_metadata`, `prefer_kinds`, `prefer_tags`, `require_high_relevance`, `freeze_clock`. |
@@ -95,6 +95,11 @@ Determinism hooks:
 - `StructuredMemoryService::new` reads `LEXON_MEMORY_BACKEND` env var (default `basic`) and instantiates the backend trait via `build_backend(name)`.
 - On unknown backend, logs warning and falls back to `basic`.
 - Future roadmap: per-call overrides via options (`{"backend": "patricia"}`).
+
+### 5.6 Pinning semantics
+- `pin_memory` / `unpin_memory` delegate to `toggle_pin` which accepts either `id` or `path`.
+- Updating the pin flag also refreshes `updated_at` so recalls reflect the latest ordering.
+- Missing IDs/paths surface `ExecutorError::RuntimeError("Memory '...' not found in space '...'")`.
 
 ## 6. Bundled context format
 
@@ -138,10 +143,18 @@ Ordering rules:
 
 - Budgets: `remember_*` and `recall_*` respect provider budgets/quotas (shared with `ask_*`).
 - Telemetry: each call emits spans (LLM call, file IO, backend scoring).
-- Deterministic tests: `samples/memory/structured_semantic.lx` + `golden/memory/structured_semantic.txt` cover end-to-end behavior.
+- Deterministic tests: [`samples/memory/structured_semantic.lx`](../samples/memory/structured_semantic.lx) + [`golden/memory/structured_semantic.txt`](../golden/memory/structured_semantic.txt) cover end-to-end behavior via `{"reset": true}` and `freeze_clock`.
 - Storage: `.lexon/structured_memory/*.json` kept alongside other runtime state; safe to vendor into reproducible bundles.
 
-## 8. Roadmap (structured memory track)
+## 8. Error handling
+
+- Missing spaces → file auto-created, but invalid JSON yields `ExecutorError::RuntimeError("Invalid space ...")`.
+- Unknown backend name → warning + fallback to `basic`.
+- Serialization issues when writing spaces/objects bubble up as runtime errors; callers see `ExecutorError::RuntimeError`.
+- `toggle_pin`/`pin_memory` on unknown IDs/paths returns explicit `"Memory '...' not found"` errors.
+- `remember_raw` surfaces adapter errors (LLM failures) just like `ask`.
+
+## 9. Roadmap (structured memory track)
 
 - Additional backends (TemporalTree decay, external GraphRAG adapters).
 - Per-call backend overrides in `recall_context` / `recall_kind`.
@@ -149,7 +162,7 @@ Ordering rules:
 - Memory inspector tooling (`lexc memory browse`), query/filter UI.
 - Expanded MCP demos blending structured memory, agents, RAG, multioutput.
 
-See `ROADMAP.md` for cross-cutting roadmap items (DX, providers, IR optimizations, networking/stdlib, sockets, CI hardening, etc.).
+See [`ROADMAP.md`](../ROADMAP.md) for cross-cutting roadmap items (DX, providers, IR optimizations, networking/stdlib, sockets, CI hardening, etc.).
 
 ---
 

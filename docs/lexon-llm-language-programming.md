@@ -12,6 +12,8 @@ If you’re tired of stitching together Python notebooks, LangChain pipelines, o
 - **Less glue code**—async runtime, sessions, RAG, structured memory, and multioutput are all built-in primitives.
 - **Minimal setup**—configure `lexon.toml` once; you don’t have to wire half a dozen services just to get started.
 
+That `lexon.toml` (shipped in `v1.0.0-rc.1/lexon.toml`) is where you declare `[system] default_provider`, `[providers.<name>]` blocks, `web_search` presets, sandbox flags, and structured-memory backends. No extra bootstrap layer required.
+
 - **Language & control flow**: modules (`modules/` roots + aliasing), `if/while/for/match`, public/private functions, typed/inferred variables, predictable truthiness, JSON-like structs, error primitives (`Ok/Error/is_ok/unwrap`).
 - **Async runtime**: `task.spawn/await`, `join_all`, `join_any`, `select_any`, channels, rate limiter, retry policies, timeouts, cooperative cancellation.
 - **Iterators & FP**: `map`, `filter`, `reduce`, `range`, `zip`, `chunk`, `strings.join`, inline expressions for dataset pipelines.
@@ -59,6 +61,32 @@ let brief = ask_safe {
 print(brief);
 ```
 
+Dual-role prompt (system + user) with guardrails:
+
+```lexon
+let summary = ask {
+  system: "You are Lexon's semantic memory layer. Be precise.";
+  user: "Summarize the runtime guide in two bullet points.";
+  model: "openai:gpt-4o-mini";
+  temperature: 0.2;
+  max_tokens: 256;
+};
+```
+
+Hybrid search + fusion + answer:
+
+```lexon
+let hits = memory_index.hybrid_search("before_action hook", 5);
+let context = rag.fuse_passages(hits, 3);
+let answer = ask {
+  system: "Use only the provided context.";
+  user: strings.join([
+    "Context:\n", context, "\n\nQuestion: How do before_action hooks enrich agents?"
+  ], "")
+};
+print(answer);
+```
+
 ---
 
 ## 3. MCP agents, tooling, and observability
@@ -72,6 +100,24 @@ Agents aren’t useful if you can’t govern them, cancel them, or see what they
 - **Configuration**: `lexon.toml` drives providers, web search, sandbox toggles (`LEXON_ALLOW_HTTP`, `LEXON_ALLOW_NET`), memory paths.
 
 Everything funnels through the same governance rails: structured memory, RAG queries, HTTP calls, MCP tools, and multioutput share telemetry, budgets, and deterministic behavior.
+
+Start servers and hook context:
+
+```bash
+# stdio server
+cargo run -q -p lexc -- --mcp-stdio
+
+# WebSocket server with custom addr
+cargo run -q -p lexc -- --mcp-ws --mcp-addr 127.0.0.1:9443
+```
+
+```lexon
+before_action use_context project="lexon_demo" topic="runtime";
+
+let supervisor = agent_create("runtime_supervisor", """{"model":"openai:gpt-4o-mini","budget_usd":0.15}""");
+let report = agent_run(supervisor, "Produce the deployment checklist for RC.1", """{"deadline_ms": 30000}""");
+print(report);
+```
 
 ---
 
@@ -161,8 +207,8 @@ These are the programs I run to prove Lexon still “gets it right” end-to-end
 
 - `samples/00-hello-lexon.lx`: syntax and CLI workflow.
 - `samples/01-async-parallel.lx`: scheduler, `task.spawn`, `select_any`.
-- `samples/apps/research_analyst/main.lx`: MCP tools, web search, RAG, sessions.
-- `samples/memory/structured_semantic.lx`: deterministic structured-memory smoke test + golden.
+- [`samples/apps/research_analyst/main.lx`](../samples/apps/research_analyst/main.lx): full MCP + web search + RAG + sessions demo.
+- [`samples/memory/structured_semantic.lx`](../samples/memory/structured_semantic.lx): deterministic structured-memory smoke test + [`golden/memory/structured_semantic.txt`](../golden/memory/structured_semantic.txt).
 - Plus ETL mini, notes organizer, triage pipeline, release-notes copilot, static site generator, eval harness.
 
 Commands:
@@ -191,7 +237,7 @@ Use real providers by exporting API keys and editing `lexon.toml` (`default_prov
 - Cross-project memory links and role-based visibility.
 - Memory inspector tooling (`lexc memory browse`) and better introspection.
 - Bigger MCP demos that mix structured memory, agents, RAG, multioutput.
-- Plus the broader items already listed in `ROADMAP.md`: Qdrant presets, telemetry dashboards, provider expansion, IR optimizations, richer stdlib/networking, sockets, CI hardening, and DX tooling.
+- Plus the broader items already listed in [`ROADMAP.md`](../ROADMAP.md): Qdrant presets, telemetry dashboards, provider expansion, IR optimizations, richer stdlib/networking, sockets, CI hardening, and DX tooling.
 
 ---
 
