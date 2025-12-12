@@ -4,6 +4,39 @@ Every time I tried to build a serious LLM workflow, I ended up juggling scripts,
 
 ---
 
+## 0. Copy-paste quickstart
+
+Run one command, watch async orchestration + merge happen, and be done before the kettle boils:
+
+```bash
+cargo run -q -p lexc-cli -- compile --run samples/01-async-parallel.lx
+```
+
+```lexon
+pub fn main() {
+  set_default_model("simulated");
+
+  let [outline, slogans] = ask_parallel([
+    ask { user: "Outline the release checklist for Lexon RC.1"; temperature: 0.1; },
+    ask { user: "Give me two motivating one-liners for the launch"; temperature: 0.4; }
+  ]);
+
+  let merged = ask_merge(outline, slogans, "Return two concise bullet points for kickoff");
+  print(merged);
+}
+```
+
+No shell scripts, no YAML pipelines: `lexc-cli` compiles and runs the IR, and the deterministic runtime simulates the LLMs until you provide real API keys.
+
+### Toolchain assumptions
+
+- Rust toolchain: `rustup override set 1.82.0 && rustup component add clippy rustfmt`.
+- Build step: `cargo build --workspace --locked`.
+- Provider keys: export `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or declare custom `[providers]` blocks in `lexon.toml`.
+- Sandbox flags: `--workspace .` gates file I/O, `--allow-exec` unlocks `execute()`, `LEXON_ALLOW_HTTP=1` enables the HTTP client.
+
+---
+
 ## 1. Lexon in three minutes
 
 If you’re tired of stitching together Python notebooks, LangChain pipelines, or orchestration DAGs just to run prompts with context and validation, Lexon is the opposite experience: a real language with LLM-first primitives, governance, and structured memory built in. Instead of spinning up extra frameworks and services for every new feature, Lexon gives you:
@@ -31,6 +64,16 @@ pub fn main() {
 ```
 
 Execution goes through `lexc-cli`. Offline simulations are the default; setting `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or custom provider blocks in `lexon.toml` seamlessly switches to real models.
+
+### How it compares
+
+| Criteria | Lexon v1.0.0-rc.1 | LangChain/LlamaIndex stacks | Plain Python/Rust async |
+|----------|------------------|-----------------------------|-------------------------|
+| Orchestration surface | Language primitives (`ask*`, `task.spawn`, `before_action`) | Library APIs layered over notebooks/notebooks + config | You script tasks, retries, and fan-out by hand |
+| Memory + RAG | Vector + structured memory built in, deterministic samples | Plugins that need extra stores/services | Manual DB + embedding wiring |
+| Governance | Sandbox flags, budgets, deterministic runtime, OTEL hooks | Depends on host app | Logging/telemetry are DIY |
+| Developer ergonomics | One CLI + `lexon.toml`; VS Code extension, tree-sitter | Mix of Python, YAML, notebooks, env orchestration | Full control but more glue |
+| Parallelism | Scheduler knows LLM calls, `ask_parallel`, `ask_merge` | Tied to asyncio/executors per project | You manage concurrency + cancellation |
 
 ---
 
@@ -119,6 +162,18 @@ let report = agent_run(supervisor, "Produce the deployment checklist for RC.1", 
 print(report);
 ```
 
+### Telemetry in practice
+
+Lexon’s OTEL hooks are baked into the runtime. Flip a single env var and every scheduler hop, `ask` call, structured-memory write, or MCP tool execution emits spans:
+
+```bash
+LEXON_OTEL=1 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+  cargo run -q -p lexc-cli -- compile --run samples/01-async-parallel.lx
+```
+
+The bundled OTLP smoke collector (`cargo make otel-smoke`) surfaces spans such as `lexon.scheduler.execute`, `lexon.ask.request`, and `lexon.memory.remember_raw`, each annotated with model, tokens, duration, and budget metadata—proof that this stack is observability-ready.
+
+
 ---
 
 ## 4. Structured Project Memory (spotlight)
@@ -201,7 +256,23 @@ If you just need the checklist, here it is:
 
 ---
 
-## 7. Samples & how to actually use Lexon
+## 7. Stability map (RC vs 1.1)
+
+| Area | RC.1 status | Heading into 1.1 |
+|------|-------------|------------------|
+| Language + scheduler | ✅ Frozen: modules, async/await, scheduler, error handling | Perf profiling + IR tweaks only |
+| ask/ask_parallel/ask_merge + validation | ✅ Frozen APIs | Expand ensembles + arbitration policies |
+| Structured Project Memory | ✅ GA-level primitives + pluggable backends | Memory inspector CLI, backend hints |
+| Vector RAG + multioutput | 🔄 Stable core, polishing APIs | RAG Lite presets, richer multioutput helpers |
+| MCP/agents | ✅ CLI switches, quotas, cancellation done | Add sample supervisors + tool packs |
+| Observability | ✅ OTEL/Prometheus spans wired | Dashboard templates + provider budget reports |
+| Iterators/data transforms | ✅ map/filter/reduce/ETL minis | Windowed ops + join helpers |
+
+**GA exit criteria**: p95 latency under 1.2× baseline for `samples/apps/research_analyst`, <1% regression in token budgets on `samples/memory/structured_semantic`, and OTEL spans present for every tool/ask call in CI smoke tests. Once those are green, RC.1 graduates to 1.0.0.
+
+---
+
+## 8. Samples & how to actually use Lexon
 
 These are the programs I run to prove Lexon still “gets it right” end-to-end:
 
@@ -230,18 +301,21 @@ Use real providers by exporting API keys and editing `lexon.toml` (`default_prov
 
 ---
 
-## 8. Roadmap snapshot
+## 9. Roadmap snapshot
 
 - More structured-memory backends (TemporalTree decay, external GraphRAG adapters).
 - Per-call backend overrides (`{"backend": "patricia"}` hints).
 - Cross-project memory links and role-based visibility.
 - Memory inspector tooling (`lexc memory browse`) and better introspection.
+- RAG Lite bundles plus richer multioutput helpers (e.g., deterministic static-site generator sample).
 - Bigger MCP demos that mix structured memory, agents, RAG, multioutput.
 - Plus the broader items already listed in [`ROADMAP.md`](../ROADMAP.md): Qdrant presets, telemetry dashboards, provider expansion, IR optimizations, richer stdlib/networking, sockets, CI hardening, and DX tooling.
 
+We gate GA on three metrics: median `cargo make samples-smoke`, p95 runtime for `samples/apps/research_analyst`, and structured-memory recall accuracy on the golden sample. When those stay inside budget for two consecutive runs, RC graduates to 1.0.
+
 ---
 
-## 9. Getting started
+## 10. Getting started
 
 1. Clone `github.com/lexon-lang/lexon` (RC pinned to Rust 1.82).
 2. `cargo build --workspace`.
@@ -253,4 +327,17 @@ Lexon already drives MCP agents, ETL pipelines, copilots, RAG flows, and now hig
 
 *Repository*: [github.com/lexon-lang/lexon](https://github.com/lexon-lang/lexon)  
 *Docs*: `README.md`, `DOCUMENTATION.md`, `communication/lexon_memory_features.md`  
-*Contact*: open an issue/PR or share your demo referencing Lexon + Structured Project Memory.  
+*Contact*: open an issue/PR or share your demo referencing Lexon + Structured Project Memory.
+
+---
+
+## 11. What to try next
+
+- **Ship a memory-first agent**: run `samples/memory/structured_semantic.lx`, pin the insights you care about, then wire `before_action use_context` into your go-to agent template so every step sees the curated context.
+- **Launch MCP in under a minute**: `lexc --mcp-ws --mcp-addr 127.0.0.1:9443` and hand that endpoint to Cursor, Claude Desktop, or your own supervisor—Lexon handles streaming, quotas, and cancellation.
+- **Blend RAG + structured memory**: call `recall_context` first, reuse its summaries as a system prompt, then run `memory_index.hybrid_search` for long-tail retrieval. Less hallucination, more grounded answers.
+- **Automate governance checks**: enable OTEL/Prometheus, run `cargo make samples-smoke`, and watch structured memory, agents, and MCP emit spans with budgets so you can spot regressions early.
+- **Prototype in Python**: install `lexon_py`, compile `.lx` snippets inline, and keep your existing notebooks while you migrate orchestrations into Lexon.
+- **Star + grab an issue**: [github.com/lexon-lang/lexon](https://github.com/lexon-lang/lexon) and the [`good first issue` queue](https://github.com/lexon-lang/lexon/issues?q=is%3Aopen+label%3A%22good+first+issue%22) are the fastest way to contribute feedback.
+- **Run a full workflow**: `cargo run -q -p lexc-cli -- compile --run samples/apps/research_analyst/main.lx` hits MCP, web search, RAG, sessions, and structured memory end-to-end—perfect demo fodder.
+

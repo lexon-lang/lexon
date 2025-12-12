@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>lexon-llm-language-programming</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<h1 id="lexon-v1.0.0-rc.1-a-full-stack-language-for-llm-systems">Lexon
+v1.0.0-rc.1 — A Full-stack Language for LLM Systems</h1>
+<p>Every time I tried to build a serious LLM workflow, I ended up
+juggling scripts, notebooks, glue services, and half a dozen “context”
+hacks. I wanted a language where async orchestration, validation, RAG,
+agents, and now structured memory are first-class—not bolted on after
+the fact. Lexon is my answer: an LLM-first programming language with a
+deterministic runtime, strong governance, and batteries included. This
+RC introduces the biggest addition so far, <strong>Structured Project
+Memory</strong>, but it sits next to peers like MCP, sessions,
+merge/fallback/ensemble, arbitrage, multioutput, and advanced RAG.
+Here’s the tour.</p>
+<hr />
+<h2 id="copy-paste-quickstart">0. Copy-paste quickstart</h2>
+<p>Run one command, watch async orchestration + merge happen, and be
+done before the kettle boils:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> run <span class="at">-q</span> <span class="at">-p</span> lexc-cli <span class="at">--</span> compile <span class="at">--run</span> samples/01-async-parallel.lx</span></code></pre></div>
+<pre class="lexon"><code>pub fn main() {
+  set_default_model(&quot;simulated&quot;);
+
+  let [outline, slogans] = ask_parallel([
+    ask { user: &quot;Outline the release checklist for Lexon RC.1&quot;; temperature: 0.1; },
+    ask { user: &quot;Give me two motivating one-liners for the launch&quot;; temperature: 0.4; }
+  ]);
+
+  let merged = ask_merge(outline, slogans, &quot;Return two concise bullet points for kickoff&quot;);
+  print(merged);
+}</code></pre>
+<p>No shell scripts, no YAML pipelines: <code>lexc-cli</code> compiles
+and runs the IR, and the deterministic runtime simulates the LLMs until
+you provide real API keys.</p>
+<h3 id="toolchain-assumptions">Toolchain assumptions</h3>
+<ul>
+<li>Rust toolchain:
+<code>rustup override set 1.82.0 &amp;&amp; rustup component add clippy rustfmt</code>.</li>
+<li>Build step: <code>cargo build --workspace --locked</code>.</li>
+<li>Provider keys: export <code>OPENAI_API_KEY</code>,
+<code>ANTHROPIC_API_KEY</code>, <code>GOOGLE_API_KEY</code>, or declare
+custom <code>[providers]</code> blocks in <code>lexon.toml</code>.</li>
+<li>Sandbox flags: <code>--workspace .</code> gates file I/O,
+<code>--allow-exec</code> unlocks <code>execute()</code>,
+<code>LEXON_ALLOW_HTTP=1</code> enables the HTTP client.</li>
+</ul>
+<hr />
+<h2 id="lexon-in-three-minutes">1. Lexon in three minutes</h2>
+<p>If you’re tired of stitching together Python notebooks, LangChain
+pipelines, or orchestration DAGs just to run prompts with context and
+validation, Lexon is the opposite experience: a real language with
+LLM-first primitives, governance, and structured memory built in.
+Instead of spinning up extra frameworks and services for every new
+feature, Lexon gives you:</p>
+<ul>
+<li><strong>One surface for orchestration, validation, memory, and
+RAG</strong>—no need to juggle multiple frameworks or config
+layers.</li>
+<li><strong>Less glue code</strong>—async runtime, sessions, RAG,
+structured memory, and multioutput are all built-in primitives.</li>
+<li><strong>Minimal setup</strong>—configure <code>lexon.toml</code>
+once; you don’t have to wire half a dozen services just to get
+started.</li>
+</ul>
+<p>That <code>lexon.toml</code> (shipped in
+<code>v1.0.0-rc.1/lexon.toml</code>) is where you declare
+<code>[system] default_provider</code>,
+<code>[providers.&lt;name&gt;]</code> blocks, <code>web_search</code>
+presets, sandbox flags, and structured-memory backends. No extra
+bootstrap layer required.</p>
+<ul>
+<li><strong>Language &amp; control flow</strong>: modules
+(<code>modules/</code> roots + aliasing),
+<code>if/while/for/match</code>, public/private functions,
+typed/inferred variables, predictable truthiness, JSON-like structs,
+error primitives (<code>Ok/Error/is_ok/unwrap</code>).</li>
+<li><strong>Async runtime</strong>: <code>task.spawn/await</code>,
+<code>join_all</code>, <code>join_any</code>, <code>select_any</code>,
+channels, rate limiter, retry policies, timeouts, cooperative
+cancellation.</li>
+<li><strong>Iterators &amp; FP</strong>: <code>map</code>,
+<code>filter</code>, <code>reduce</code>, <code>range</code>,
+<code>zip</code>, <code>chunk</code>, <code>strings.join</code>, inline
+expressions for dataset pipelines.</li>
+<li><strong>Standard library</strong>: encoding, regex, math, advanced
+time/tz, JSONPath, dataset bridges (CSV/JSON/Parquet/Arrow).</li>
+<li><strong>Sandbox &amp; governance</strong>: <code>execute()</code>
+disabled by default, absolute paths gated by <code>--workspace</code>,
+budgets per provider, telemetry hooks (Prometheus, OTEL).</li>
+</ul>
+<p>Hello world stays simple:</p>
+<pre class="lexon"><code>pub fn main() {
+  set_default_model(&quot;simulated&quot;);
+  let message = ask(&quot;Say hello from Lexon&quot;);
+  print(message);
+}</code></pre>
+<p>Execution goes through <code>lexc-cli</code>. Offline simulations are
+the default; setting <code>OPENAI_API_KEY</code>,
+<code>ANTHROPIC_API_KEY</code>, <code>GOOGLE_API_KEY</code>, or custom
+provider blocks in <code>lexon.toml</code> seamlessly switches to real
+models.</p>
+<h3 id="how-it-compares">How it compares</h3>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 21%" />
+<col style="width: 35%" />
+<col style="width: 30%" />
+</colgroup>
+<thead>
+<tr>
+<th>Criteria</th>
+<th>Lexon v1.0.0-rc.1</th>
+<th>LangChain/LlamaIndex stacks</th>
+<th>Plain Python/Rust async</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Orchestration surface</td>
+<td>Language primitives (<code>ask*</code>, <code>task.spawn</code>,
+<code>before_action</code>)</td>
+<td>Library APIs layered over notebooks/notebooks + config</td>
+<td>You script tasks, retries, and fan-out by hand</td>
+</tr>
+<tr>
+<td>Memory + RAG</td>
+<td>Vector + structured memory built in, deterministic samples</td>
+<td>Plugins that need extra stores/services</td>
+<td>Manual DB + embedding wiring</td>
+</tr>
+<tr>
+<td>Governance</td>
+<td>Sandbox flags, budgets, deterministic runtime, OTEL hooks</td>
+<td>Depends on host app</td>
+<td>Logging/telemetry are DIY</td>
+</tr>
+<tr>
+<td>Developer ergonomics</td>
+<td>One CLI + <code>lexon.toml</code>; VS Code extension,
+tree-sitter</td>
+<td>Mix of Python, YAML, notebooks, env orchestration</td>
+<td>Full control but more glue</td>
+</tr>
+<tr>
+<td>Parallelism</td>
+<td>Scheduler knows LLM calls, <code>ask_parallel</code>,
+<code>ask_merge</code></td>
+<td>Tied to asyncio/executors per project</td>
+<td>You manage concurrency + cancellation</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="llm-orchestration-suite-beyond-any-single-feature">2. LLM
+orchestration suite (beyond any single feature)</h2>
+<p>The orchestration surface is intentionally broad because real apps
+need more than a lone <code>ask()</code>:</p>
+<ul>
+<li><strong>ask-family</strong>: <code>ask</code>,
+<code>ask_parallel</code>, <code>ask_merge</code>
+(summarize/synthesize), <code>ask_with_fallback</code>,
+<code>ask_ensemble</code>, <code>model_arbitrage</code>,
+<code>model_dialogue</code>.</li>
+<li><strong>Validation &amp; quality (anti-hallucination)</strong>:
+<code>ask_safe</code>, <code>ask_with_validation</code>,
+<code>quality.*</code> gates for schema/PII/confidence, configurable
+retries/budgets.</li>
+<li><strong>Multioutput</strong>: <code>ask_multioutput</code> emits
+primary text + multiple deterministic files (JSON/CSV/Markdown/binary
+stubs) with helpers <code>get_multioutput_*</code>,
+<code>save_multioutput_file</code>.</li>
+<li><strong>Sessions</strong>:
+<code>session_start/ask/history/summarize/compress/extract_key_points</code>,
+TTL/GC via <code>sessions.gc_now</code>, context window management.</li>
+<li><strong>RAG stack</strong>: per-model tokenization,
+<code>memory_index.ingest_chunks</code>, hybrid search (SQLite +
+Qdrant), rerank (LLM + cross-encoder), semantic fusion with citations,
+<code>rag.optimize_window</code>.</li>
+<li><strong>Data &amp; web</strong>: CSV/JSON/Parquet load/save, dataset
+ops (<code>load_csv</code>, <code>save_json</code>, Parquet via
+Polars/Arrow), <code>web.search</code> (DuckDuckGo, Brave, SerpAPI,
+custom endpoints), HTTP client (opt-in via
+<code>LEXON_ALLOW_HTTP</code>), string/regex helpers for parsing.</li>
+</ul>
+<p>Example pipeline:</p>
+<pre class="lexon"><code>let ds = load_csv(&quot;samples/triage/tickets.csv&quot;);
+let urgent = filter(ds, &#39;priority == &quot;high&quot;&#39;);
+save_json(urgent, &quot;output/high_tickets.json&quot;);
+
+let brief = ask_safe {
+  user: &quot;Summarize the high priority tickets&quot;,
+  validation: &quot;basic&quot;,
+  max_attempts: 2
+};
+
+print(brief);</code></pre>
+<p>Dual-role prompt (system + user) with guardrails:</p>
+<pre class="lexon"><code>let summary = ask {
+  system: &quot;You are Lexon&#39;s semantic memory layer. Be precise.&quot;;
+  user: &quot;Summarize the runtime guide in two bullet points.&quot;;
+  model: &quot;openai:gpt-4o-mini&quot;;
+  temperature: 0.2;
+  max_tokens: 256;
+};</code></pre>
+<p>Hybrid search + fusion + answer:</p>
+<pre class="lexon"><code>let hits = memory_index.hybrid_search(&quot;before_action hook&quot;, 5);
+let context = rag.fuse_passages(hits, 3);
+let answer = ask {
+  system: &quot;Use only the provided context.&quot;;
+  user: strings.join([
+    &quot;Context:\n&quot;, context, &quot;\n\nQuestion: How do before_action hooks enrich agents?&quot;
+  ], &quot;&quot;)
+};
+print(answer);</code></pre>
+<hr />
+<h2 id="mcp-agents-tooling-and-observability">3. MCP agents, tooling,
+and observability</h2>
+<p>Agents aren’t useful if you can’t govern them, cancel them, or see
+what they’re doing. MCP support comes built-in—you can launch stdio or
+WebSocket MCP servers directly from Lexon, register tools with quotas,
+and stream progress/cancelation signals without extra glue:</p>
+<ul>
+<li><strong>MCP 1.1</strong>: stdio + WebSocket servers, tool registry
+with quotas, cooperative cancellation (<code>rpc.cancel</code>),
+heartbeats, streaming progress.</li>
+<li><strong>Agents</strong>: <code>agent_create/run</code>,
+parallel/chained flows, supervisors, budgets, deadlines, telemetry
+spans, <code>on_tool_call</code>/<code>on_tool_error</code>.</li>
+<li><strong>Context hooks</strong>:
+<code>before_action use_context</code> automatically pulls
+structured-memory bundles before any agent step.</li>
+<li><strong>Observability &amp; governance</strong>: OTEL export,
+Prometheus metrics, per-call rollups, CLI lint/fmt/clippy/test/golden
+gates, provider budgets, deterministic goldens.</li>
+<li><strong>Configuration</strong>: <code>lexon.toml</code> drives
+providers, web search, sandbox toggles (<code>LEXON_ALLOW_HTTP</code>,
+<code>LEXON_ALLOW_NET</code>), memory paths.</li>
+</ul>
+<p>Everything funnels through the same governance rails: structured
+memory, RAG queries, HTTP calls, MCP tools, and multioutput share
+telemetry, budgets, and deterministic behavior.</p>
+<p>Start servers and hook context:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># stdio server</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> run <span class="at">-q</span> <span class="at">-p</span> lexc <span class="at">--</span> <span class="at">--mcp-stdio</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># WebSocket server with custom addr</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> run <span class="at">-q</span> <span class="at">-p</span> lexc <span class="at">--</span> <span class="at">--mcp-ws</span> <span class="at">--mcp-addr</span> 127.0.0.1:9443</span></code></pre></div>
+<pre class="lexon"><code>before_action use_context project=&quot;lexon_demo&quot; topic=&quot;runtime&quot;;
+
+let supervisor = agent_create(&quot;runtime_supervisor&quot;, &quot;&quot;&quot;{&quot;model&quot;:&quot;openai:gpt-4o-mini&quot;,&quot;budget_usd&quot;:0.15}&quot;&quot;&quot;);
+let report = agent_run(supervisor, &quot;Produce the deployment checklist for RC.1&quot;, &quot;&quot;&quot;{&quot;deadline_ms&quot;: 30000}&quot;&quot;&quot;);
+print(report);</code></pre>
+<h3 id="telemetry-in-practice">Telemetry in practice</h3>
+<p>Lexon’s OTEL hooks are baked into the runtime. Flip a single env var
+and every scheduler hop, <code>ask</code> call, structured-memory write,
+or MCP tool execution emits spans:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">LEXON_OTEL</span><span class="op">=</span>1 <span class="va">OTEL_EXPORTER_OTLP_ENDPOINT</span><span class="op">=</span>http://localhost:4317 <span class="dt">\</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="ex">cargo</span> run <span class="at">-q</span> <span class="at">-p</span> lexc-cli <span class="at">--</span> compile <span class="at">--run</span> samples/01-async-parallel.lx</span></code></pre></div>
+<p>The bundled OTLP smoke collector (<code>cargo make otel-smoke</code>)
+surfaces spans such as <code>lexon.scheduler.execute</code>,
+<code>lexon.ask.request</code>, and
+<code>lexon.memory.remember_raw</code>, each annotated with model,
+tokens, duration, and budget metadata—proof that this stack is
+observability-ready.</p>
+<hr />
+<h2 id="structured-project-memory-spotlight">4. Structured Project
+Memory (spotlight)</h2>
+<p>This RC’s headline feature is a native “second brain” for each Lexon
+project. It doesn’t replace RAG; it sits above it, curating the
+knowledge humans actually care about before any retrieval call.</p>
+<h3 id="architecture">4.1 Architecture</h3>
+<ol type="1">
+<li><strong>Semantic layer</strong> (LLM-assisted or manual) creates
+canonical <code>MemoryObject</code>s with <code>path</code>,
+<code>kind</code>, <code>raw</code>,
+<code>summary_micro/short/long</code>, <code>tags</code>,
+<code>metadata</code>, <code>relevance</code>, <code>pinned</code>,
+timestamps, and policies.</li>
+<li><strong>Tree/index backends</strong> (pluggable):
+<ul>
+<li><code>basic</code>: heuristic scoring (relevance, pinning,
+topic/kind/tag matches).</li>
+<li><code>patricia</code>: compressed trie for fast path-prefix
+lookups.</li>
+<li><code>raptor</code>: RAPTOR-style clustering using tags +
+recency.</li>
+<li><code>hybrid</code> (GraphRAG/MemTree): entity-token overlap +
+clustering.</li>
+<li>Select via
+<code>LEXON_MEMORY_BACKEND=basic|patricia|raptor|hybrid</code>.</li>
+</ul></li>
+</ol>
+<h3 id="language-primitives">4.2 Language primitives</h3>
+<pre class="lexon"><code>let _ = memory_space.create(&quot;lexon_demo&quot;, &quot;&quot;&quot;{&quot;reset&quot;: true}&quot;&quot;&quot;);
+
+let obj = remember_raw(
+  &quot;lexon_demo&quot;,
+  &quot;decision&quot;,
+  read_file(&quot;docs/runtime_decision.md&quot;),
+  &quot;&quot;&quot;{&quot;project&quot;: &quot;runtime&quot;, &quot;path_hint&quot;: &quot;lexon/runtime/decisions&quot;}&quot;&quot;&quot;
+);
+
+let bundle = recall_context(
+  &quot;lexon_demo&quot;,
+  &quot;runtime&quot;,
+  &quot;&quot;&quot;{&quot;limit&quot;: 3, &quot;include_raw&quot;: true, &quot;freeze_clock&quot;: &quot;2025-01-01T00:00:00Z&quot;}&quot;&quot;&quot;
+);
+
+print(obj);
+print(bundle);</code></pre>
+<p><code>remember_raw</code> talks to the configured provider (OpenAI,
+Anthropic, Google, Ollama, HF, custom) to infer structure, tags,
+relevance, pinning suggestions, and metadata;
+<code>remember_structured</code> ingests pre-built payloads. Both obey
+budgets, retries, telemetry, and deterministic testing features such as
+<code>freeze_clock</code>.</p>
+<h3 id="why-it-matters">4.3 Why it matters</h3>
+<ul>
+<li><strong>Curated context before RAG</strong>: agents see
+pinned/high-relevance guides, configs, and raw snippets; RAG handles the
+rest.</li>
+<li><strong>Backend flexibility</strong>: swap heuristics (Patricia
+trie, RAPTOR clusters, GraphRAG/MemTree hybrid) without touching
+application code.</li>
+<li><strong>Policies &amp; governance</strong>: per-project auto-pin,
+retention, visibility flags, deterministic resets.</li>
+<li><strong>Multi-provider ready</strong>: uses the same LLM adapter as
+<code>ask</code>, so it works with every supported backend.</li>
+</ul>
+<hr />
+<h2 id="where-it-fits-in-the-broader-stack">5. Where it fits in the
+broader stack</h2>
+<table>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 82%" />
+</colgroup>
+<thead>
+<tr>
+<th>Layer</th>
+<th>How structured memory plugs in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RAG</strong></td>
+<td><code>recall_context</code> yields
+<code>global_summary + sections + raw</code>. Chain with
+<code>memory_index.hybrid_search</code> for large corpora.</td>
+</tr>
+<tr>
+<td><strong>MCP/agents</strong></td>
+<td><code>before_action use_context</code> auto-injects bundles; pinning
+ensures critical guides/configs always enter the prompt.</td>
+</tr>
+<tr>
+<td><strong>Sessions</strong></td>
+<td>Session transcripts can be summarized and stored via
+<code>remember_structured</code>, giving each project a durable
+storyline.</td>
+</tr>
+<tr>
+<td><strong>Multioutput</strong></td>
+<td>Use curated memories to generate multi-file briefings via
+<code>ask_multioutput</code>.</td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td><code>remember_*</code> / <code>recall_*</code> emit spans, respect
+budgets, and show up in OTEL/Prometheus dashboards.</td>
+</tr>
+</tbody>
+</table>
+<p>Structured memory is a peer to RAG, MCP, sessions,
+merge/fallback/ensemble, arbitrage, multioutput, and other orchestration
+features—one more first-class capability, not the only story.</p>
+<hr />
+<h2 id="lexon-feature-catalog-expanded">6. Lexon feature catalog
+(expanded)</h2>
+<p>If you just need the checklist, here it is:</p>
+<ul>
+<li><strong>Core language</strong>: modules,
+<code>if/while/for/match</code>, functions, structs, error handling,
+string/data utilities.</li>
+<li><strong>Async runtime</strong>: scheduler,
+<code>task.spawn/await</code>, <code>join_all</code>,
+<code>select_any</code>, channels, rate limiter, retries, timeouts.</li>
+<li><strong>Iterators/FP</strong>: <code>map</code>,
+<code>filter</code>, <code>reduce</code>, <code>zip</code>,
+<code>chunk</code>, <code>flatten</code>, <code>unique</code>,
+<code>find</code>, <code>count</code>.</li>
+<li><strong>Data &amp; IO</strong>: load/save CSV/JSON/Parquet, dataset
+bridges, ETL minis, sandboxed <code>execute</code>, deterministic
+goldens.</li>
+<li><strong>Networking/web</strong>: HTTP client (opt-in), configurable
+<code>web.search</code>, custom endpoints via
+<code>lexon.toml</code>.</li>
+<li><strong>LLM orchestration</strong>: ask family,
+<code>ask_safe</code>, <code>ask_with_validation</code>, multioutput,
+model arbitrage/dialogue.</li>
+<li><strong>Validation/quality</strong>: <code>quality.*</code>, gates
+for PII/schema/confidence, <code>sessions.gc_now</code>, budgets per
+provider.</li>
+<li><strong>Memory systems</strong>: vector memory
+(<code>memory_index.*</code>), structured project memory
+(<code>memory_space.*</code>, <code>remember_*</code>,
+<code>recall_*</code>, pin/policy APIs),
+<code>before_action use_context</code>.</li>
+<li><strong>RAG</strong>: hybrid search, rerank (LLM + cross-encoder),
+fusion, <code>rag.optimize_window</code>, per-model tokenization.</li>
+<li><strong>Agents &amp; MCP</strong>: stdio/WS servers, tool registry,
+quotas, cancellation, streaming, agent supervisors.</li>
+<li><strong>Observability/governance</strong>: OTEL, Prometheus, CLI
+lint/fmt/clippy/tests/golden gates, budgets/quotas, telemetry
+redaction.</li>
+<li><strong>Tooling</strong>: VS Code extension, Tree-sitter grammar,
+Python binding (<code>lexon_py</code>), <code>cargo-make</code> tasks,
+fuzz harnesses.</li>
+</ul>
+<hr />
+<h2 id="stability-map-rc-vs-1.1">7. Stability map (RC vs 1.1)</h2>
+<table>
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 35%" />
+<col style="width: 48%" />
+</colgroup>
+<thead>
+<tr>
+<th>Area</th>
+<th>RC.1 status</th>
+<th>Heading into 1.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language + scheduler</td>
+<td>✅ Frozen: modules, async/await, scheduler, error handling</td>
+<td>Perf profiling + IR tweaks only</td>
+</tr>
+<tr>
+<td>ask/ask_parallel/ask_merge + validation</td>
+<td>✅ Frozen APIs</td>
+<td>Expand ensembles + arbitration policies</td>
+</tr>
+<tr>
+<td>Structured Project Memory</td>
+<td>✅ GA-level primitives + pluggable backends</td>
+<td>Memory inspector CLI, backend hints</td>
+</tr>
+<tr>
+<td>Vector RAG + multioutput</td>
+<td>🔄 Stable core, polishing APIs</td>
+<td>RAG Lite presets, richer multioutput helpers</td>
+</tr>
+<tr>
+<td>MCP/agents</td>
+<td>✅ CLI switches, quotas, cancellation done</td>
+<td>Add sample supervisors + tool packs</td>
+</tr>
+<tr>
+<td>Observability</td>
+<td>✅ OTEL/Prometheus spans wired</td>
+<td>Dashboard templates + provider budget reports</td>
+</tr>
+<tr>
+<td>Iterators/data transforms</td>
+<td>✅ map/filter/reduce/ETL minis</td>
+<td>Windowed ops + join helpers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>GA exit criteria</strong>: p95 latency under 1.2× baseline
+for <code>samples/apps/research_analyst</code>, &lt;1% regression in
+token budgets on <code>samples/memory/structured_semantic</code>, and
+OTEL spans present for every tool/ask call in CI smoke tests. Once those
+are green, RC.1 graduates to 1.0.0.</p>
+<hr />
+<h2 id="samples-how-to-actually-use-lexon">8. Samples &amp; how to
+actually use Lexon</h2>
+<p>These are the programs I run to prove Lexon still “gets it right”
+end-to-end:</p>
+<ul>
+<li><code>samples/00-hello-lexon.lx</code>: syntax and CLI
+workflow.</li>
+<li><code>samples/01-async-parallel.lx</code>: scheduler,
+<code>task.spawn</code>, <code>select_any</code>.</li>
+<li><a
+href="../samples/apps/research_analyst/main.lx"><code>samples/apps/research_analyst/main.lx</code></a>:
+full MCP + web search + RAG + sessions demo.</li>
+<li><a
+href="../samples/memory/structured_semantic.lx"><code>samples/memory/structured_semantic.lx</code></a>:
+deterministic structured-memory smoke test + <a
+href="../golden/memory/structured_semantic.txt"><code>golden/memory/structured_semantic.txt</code></a>.</li>
+<li>Plus ETL mini, notes organizer, triage pipeline, release-notes
+copilot, static site generator, eval harness.</li>
+</ul>
+<p>Commands:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> build <span class="at">--workspace</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> run <span class="at">-q</span> <span class="at">-p</span> lexc-cli <span class="at">--</span> compile <span class="at">--run</span> samples/00-hello-lexon.lx</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> make samples-smoke</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="ex">cargo</span> make samples-snapshot</span></code></pre></div>
+<p>Switch structured memory backend:</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="va">LEXON_MEMORY_BACKEND</span><span class="op">=</span>hybrid <span class="ex">cargo</span> run <span class="at">--bin</span> lexc <span class="at">--</span> samples/memory/structured_semantic.lx</span></code></pre></div>
+<p>Use real providers by exporting API keys and editing
+<code>lexon.toml</code> (<code>default_provider</code>, per-provider
+defaults). Without keys, everything is deterministic and runs
+offline.</p>
+<hr />
+<h2 id="roadmap-snapshot">9. Roadmap snapshot</h2>
+<ul>
+<li>More structured-memory backends (TemporalTree decay, external
+GraphRAG adapters).</li>
+<li>Per-call backend overrides (<code>{"backend": "patricia"}</code>
+hints).</li>
+<li>Cross-project memory links and role-based visibility.</li>
+<li>Memory inspector tooling (<code>lexc memory browse</code>) and
+better introspection.</li>
+<li>RAG Lite bundles plus richer multioutput helpers (e.g.,
+deterministic static-site generator sample).</li>
+<li>Bigger MCP demos that mix structured memory, agents, RAG,
+multioutput.</li>
+<li>Plus the broader items already listed in <a
+href="../ROADMAP.md"><code>ROADMAP.md</code></a>: Qdrant presets,
+telemetry dashboards, provider expansion, IR optimizations, richer
+stdlib/networking, sockets, CI hardening, and DX tooling.</li>
+</ul>
+<p>We gate GA on three metrics: median
+<code>cargo make samples-smoke</code>, p95 runtime for
+<code>samples/apps/research_analyst</code>, and structured-memory recall
+accuracy on the golden sample. When those stay inside budget for two
+consecutive runs, RC graduates to 1.0.</p>
+<hr />
+<h2 id="getting-started">10. Getting started</h2>
+<ol type="1">
+<li>Clone <code>github.com/lexon-lang/lexon</code> (RC pinned to Rust
+1.82).</li>
+<li><code>cargo build --workspace</code>.</li>
+<li>Run samples in simulated mode or export provider keys for real
+runs.</li>
+<li>Play with <code>samples/memory/structured_semantic.lx</code> using
+different backends (<code>basic</code>, <code>patricia</code>,
+<code>raptor</code>, <code>hybrid</code>).</li>
+<li>Read <code>README.md</code>, <code>DOCUMENTATION.md</code>,
+<code>communication/lexon_memory_features.md</code> for the deep
+details.</li>
+</ol>
+<p>Lexon already drives MCP agents, ETL pipelines, copilots, RAG flows,
+and now high-signal project memory—all from one language. If you try it,
+let me know what you build; I’m still the only person maintaining this
+thing, and your feedback shapes the backlog.</p>
+<p><em>Repository</em>: <a
+href="https://github.com/lexon-lang/lexon">github.com/lexon-lang/lexon</a><br />
+<em>Docs</em>: <code>README.md</code>, <code>DOCUMENTATION.md</code>,
+<code>communication/lexon_memory_features.md</code><br />
+<em>Contact</em>: open an issue/PR or share your demo referencing Lexon
++ Structured Project Memory.</p>
+<hr />
+<h2 id="what-to-try-next">11. What to try next</h2>
+<ul>
+<li><strong>Ship a memory-first agent</strong>: run
+<code>samples/memory/structured_semantic.lx</code>, pin the insights you
+care about, then wire <code>before_action use_context</code> into your
+go-to agent template so every step sees the curated context.</li>
+<li><strong>Launch MCP in under a minute</strong>:
+<code>lexc --mcp-ws --mcp-addr 127.0.0.1:9443</code> and hand that
+endpoint to Cursor, Claude Desktop, or your own supervisor—Lexon handles
+streaming, quotas, and cancellation.</li>
+<li><strong>Blend RAG + structured memory</strong>: call
+<code>recall_context</code> first, reuse its summaries as a system
+prompt, then run <code>memory_index.hybrid_search</code> for long-tail
+retrieval. Less hallucination, more grounded answers.</li>
+<li><strong>Automate governance checks</strong>: enable OTEL/Prometheus,
+run <code>cargo make samples-smoke</code>, and watch structured memory,
+agents, and MCP emit spans with budgets so you can spot regressions
+early.</li>
+<li><strong>Prototype in Python</strong>: install <code>lexon_py</code>,
+compile <code>.lx</code> snippets inline, and keep your existing
+notebooks while you migrate orchestrations into Lexon.</li>
+<li><strong>Star + grab an issue</strong>: <a
+href="https://github.com/lexon-lang/lexon">github.com/lexon-lang/lexon</a>
+and the <a
+href="https://github.com/lexon-lang/lexon/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><code>good first issue</code>
+queue</a> are the fastest way to contribute feedback.</li>
+<li><strong>Run a full workflow</strong>:
+<code>cargo run -q -p lexc-cli -- compile --run samples/apps/research_analyst/main.lx</code>
+hits MCP, web search, RAG, sessions, and structured memory
+end-to-end—perfect demo fodder.</li>
+</ul>
+</body>
+</html>

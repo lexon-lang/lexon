@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>structured_project_memory_spec</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<h1
+id="structured-project-memory-technical-specification-v1.0.0-rc.1">Structured
+Project Memory — Technical Specification (v1.0.0-rc.1)</h1>
+<h2 id="purpose">1. Purpose</h2>
+<p>Structured Project Memory (SPM) is Lexon’s native “second brain.” It
+ingests raw artifacts (code, guides, decisions, logs), normalizes them
+into canonical <code>MemoryObject</code>s, stores them in pluggable
+tree/index backends, and exposes retrieval primitives
+(<code>recall_context</code>, <code>recall_kind</code>,
+<code>before_action use_context</code>) so every Lexon program can
+access curated context before or alongside traditional RAG. The goal is
+to provide durable knowledge per project with deterministic behavior,
+governance, and zero extra frameworks.</p>
+<h2 id="system-overview">2. System overview</h2>
+<pre><code>Raw assets ──&gt; Semantic layer ──&gt; MemoryObject ──&gt; Backend (basic/patricia/raptor/hybrid)
+     ^             |                                 |               |
+     |             |                                 |               └─&gt; Policy evaluation, summaries
+     |             └─&gt; remember_raw / remember_structured           ↓
+  Lexon runtime &lt;────────────────────── recall_context / recall_kind / before_action use_context</code></pre>
+<h3 id="components">2.1 Components</h3>
+<ol type="1">
+<li><strong>Semantic Layer</strong>
+<ul>
+<li>Input: raw text + hints (<code>path_hint</code>, <code>kind</code>,
+<code>project</code>, <code>tags</code>, <code>metadata</code>).</li>
+<li>Output: normalized <code>MemoryObject</code>.</li>
+<li>Implementations: <code>remember_raw</code> (LLM-assisted) or
+<code>remember_structured</code> (pre-built JSON).</li>
+</ul></li>
+<li><strong>Storage Layer (Pluggable Backend)</strong>
+<ul>
+<li>Persists <code>MemorySpaceFile</code> under
+<code>.lexon/structured_memory/&lt;space&gt;.json</code> (see
+<code>space_path</code> helper). Each file contains the entire space,
+sorted deterministically by <code>updated_at</code>.</li>
+<li>Provides ordering/scoring for topics (<code>order_for_topic</code>)
+and kinds (<code>order_for_kind</code>).</li>
+<li>Backends: <code>basic</code>, <code>patricia</code>,
+<code>raptor</code>, <code>hybrid (GraphRAG/MemTree)</code>.</li>
+</ul></li>
+<li><strong>Runtime Layer</strong>
+<ul>
+<li><code>memory_space.create/list</code>, <code>remember_*</code>,
+<code>recall_*</code>, <code>pin_memory</code>,
+<code>set_memory_policy</code>.</li>
+<li><code>before_action use_context</code> hook injects bundles into MCP
+agents/flows.</li>
+</ul></li>
+</ol>
+<h2 id="memory-object-schema">3. Memory object schema</h2>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;mem_* (optional override)&quot;</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;project/module/topic&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;kind&quot;</span><span class="fu">:</span> <span class="st">&quot;guide|config|decision|log|custom&quot;</span><span class="fu">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;raw&quot;</span><span class="fu">:</span> <span class="st">&quot;... original text ...&quot;</span><span class="fu">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;summary_micro&quot;</span><span class="fu">:</span> <span class="st">&quot;1-2 sentences&quot;</span><span class="fu">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;summary_short&quot;</span><span class="fu">:</span> <span class="st">&quot;short paragraph / bullets&quot;</span><span class="fu">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;summary_long&quot;</span><span class="fu">:</span> <span class="st">&quot;long-form abstract&quot;</span><span class="fu">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;tags&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;lowercase&quot;</span><span class="ot">,</span> <span class="st">&quot;slugs&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;project&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span> <span class="dt">&quot;space&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span> <span class="dt">&quot;importance&quot;</span><span class="fu">:</span> <span class="st">&quot;high&quot;</span><span class="fu">},</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;relevance&quot;</span><span class="fu">:</span> <span class="st">&quot;high|medium|low&quot;</span><span class="fu">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;pinned&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="er">|</span><span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;created_at&quot;</span><span class="fu">:</span> <span class="st">&quot;RFC3339&quot;</span><span class="fu">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;updated_at&quot;</span><span class="fu">:</span> <span class="st">&quot;RFC3339&quot;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<ul>
+<li><code>MemorySpaceFile</code> aggregates <code>objects</code>,
+<code>metadata</code>, <code>policies</code>,
+<code>updated_at</code>.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;mem_runtime_decision_001&quot;</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;lexon/runtime/release_checklist&quot;</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;kind&quot;</span><span class="fu">:</span> <span class="st">&quot;decision&quot;</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;raw&quot;</span><span class="fu">:</span> <span class="st">&quot;Ship RC once structured memory recalls &lt;200ms and MCP supervisor is green.&quot;</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;summary_micro&quot;</span><span class="fu">:</span> <span class="st">&quot;RC go/no-go checklist&quot;</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;summary_short&quot;</span><span class="fu">:</span> <span class="st">&quot;Decisions and blockers for promoting Lexon v1.0.0-rc.1 to GA.&quot;</span><span class="fu">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;summary_long&quot;</span><span class="fu">:</span> <span class="st">&quot;Context, telemetry targets, and required samples-smoke pass/fail report for the release.&quot;</span><span class="fu">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;tags&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;runtime&quot;</span><span class="ot">,</span> <span class="st">&quot;release&quot;</span><span class="ot">,</span> <span class="st">&quot;checklist&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;project&quot;</span><span class="fu">:</span> <span class="st">&quot;lexon&quot;</span><span class="fu">,</span> <span class="dt">&quot;space&quot;</span><span class="fu">:</span> <span class="st">&quot;runtime&quot;</span><span class="fu">,</span> <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;docs/runtime_decision.md&quot;</span><span class="fu">,</span> <span class="dt">&quot;hash&quot;</span><span class="fu">:</span> <span class="st">&quot;sha256:6be0...&quot;</span><span class="fu">,</span> <span class="dt">&quot;pii_flags&quot;</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">},</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;relevance&quot;</span><span class="fu">:</span> <span class="st">&quot;high&quot;</span><span class="fu">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;pinned&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;chunks&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span><span class="dt">&quot;chunk_id&quot;</span><span class="fu">:</span> <span class="st">&quot;runtime_decision_001#0&quot;</span><span class="fu">,</span> <span class="dt">&quot;text&quot;</span><span class="fu">:</span> <span class="st">&quot;Context...&quot;</span><span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span><span class="dt">&quot;chunk_id&quot;</span><span class="fu">:</span> <span class="st">&quot;runtime_decision_001#1&quot;</span><span class="fu">,</span> <span class="dt">&quot;text&quot;</span><span class="fu">:</span> <span class="st">&quot;Checklist...&quot;</span><span class="fu">}</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;created_at&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-12-01T11:32:00Z&quot;</span><span class="fu">,</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;updated_at&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-12-01T12:04:00Z&quot;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<ul>
+<li><code>MemorySpaceFile</code> aggregates <code>objects</code>,
+<code>metadata</code>, <code>policies</code>,
+<code>updated_at</code>.</li>
+<li>Policies can include auto-pin rules, retention hints, visibility
+flags (future).</li>
+</ul>
+<h3 id="retention-pii">3.1 Retention + PII</h3>
+<table>
+<colgroup>
+<col style="width: 43%" />
+<col style="width: 28%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr>
+<th>Policy field</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ttl_days</code></td>
+<td>Max age before objects are archived/pruned.
+<code>memory_space.gc()</code> enforces it.</td>
+<td><code>null</code> (never expires)</td>
+</tr>
+<tr>
+<td><code>pii_redaction</code></td>
+<td>List of regexes or detectors (emails, keys) to scrub before
+persisting <code>raw</code>.</td>
+<td><code>[]</code></td>
+</tr>
+<tr>
+<td><code>export_path</code></td>
+<td>Absolute or workspace-relative directory for
+<code>memory_space.export</code>. Produces JSON bundle per space.</td>
+<td><code>.lexon/exports/&lt;space&gt;.json</code></td>
+</tr>
+<tr>
+<td><code>allow_delete</code></td>
+<td>Boolean guard for <code>memory_space.delete(space)</code>
+operations.</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>Retention enforcement flow: 1. <code>remember_*</code> stamps
+<code>created_at</code>/<code>updated_at</code> using deterministic
+clock when <code>freeze_clock</code> is set. 2.
+<code>set_memory_policy</code> with <code>ttl_days</code> +
+<code>allow_delete=true</code> enables
+<code>memory_space.gc(space)</code> to purge expired objects (and write
+audit logs). 3. Redaction occurs before serialization: detectors strip
+emails/API keys from <code>raw</code> and stash hashes inside
+<code>metadata.pii_flags</code>. 4. Exports are JSON bundles signed with
+<code>space</code> + <code>hash</code> so teams can hand them to
+audit/compliance or restore elsewhere.</p>
+<p>Deletion/export commands are CLI-level operations so teams can
+satisfy GDPR/CCPA requests without editing Lexon files manually.</p>
+<h2 id="api-surface-lexon-primitives">4. API surface (Lexon
+primitives)</h2>
+<table>
+<colgroup>
+<col style="width: 55%" />
+<col style="width: 45%" />
+</colgroup>
+<thead>
+<tr>
+<th>Primitive</th>
+<th>Summary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory_space.create(name, metadata_json?)</code></td>
+<td>Initializes/resets a space. Pass <code>{"reset": true}</code> to
+wipe contents (deterministic tests).</td>
+</tr>
+<tr>
+<td><code>memory_space.list()</code></td>
+<td>Lists all spaces (summaries).</td>
+</tr>
+<tr>
+<td><code>remember_structured(space, payload_json, options?)</code></td>
+<td>Ingests a pre-built <code>MemoryObject</code>. Auto-fills missing
+summaries from <code>raw</code>.</td>
+</tr>
+<tr>
+<td><code>remember_raw(space, kind, raw_text, options?)</code></td>
+<td>Calls the semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to
+infer path, summaries, tags, relevance, <code>auto_pin</code>. Options:
+<code>model</code>, <code>temperature</code>, <code>max_tokens</code>,
+<code>path_hint</code>, <code>project</code>, <code>tags</code>,
+<code>metadata</code>, <code>auto_pin</code>. Falls back to
+<code>options.model</code> → <code>LEXON_MEMORY_SEMANTIC_MODEL</code> →
+<code>config.llm_model</code>.</td>
+</tr>
+<tr>
+<td><code>pin_memory(space, id_or_path)</code> /
+<code>unpin_memory(...)</code></td>
+<td>Toggle <code>pinned</code>.</td>
+</tr>
+<tr>
+<td><code>set_memory_policy(space, policy_json)</code></td>
+<td>Persist project-specific auto-pin/retention/visibility rules.</td>
+</tr>
+<tr>
+<td><code>recall_context(space, topic, options_json?)</code></td>
+<td>Returns a bundle: <code>global_summary</code>,
+<code>sections[]</code>, optional <code>raw[]</code>,
+<code>generated_at</code>. Options: <code>limit</code>,
+<code>raw_limit</code>, <code>include_raw</code>,
+<code>include_metadata</code>, <code>prefer_kinds</code>,
+<code>prefer_tags</code>, <code>require_high_relevance</code>,
+<code>freeze_clock</code>.</td>
+</tr>
+<tr>
+<td><code>recall_kind(space, kind, options_json?)</code></td>
+<td>Returns ordered list of memories filtered by kind.</td>
+</tr>
+<tr>
+<td><code>before_action use_context project="..." topic="..."</code></td>
+<td>MCP hook to auto-inject recall bundles before agent tasks.</td>
+</tr>
+</tbody>
+</table>
+<p>Determinism hooks: - <code>freeze_clock</code> overrides timestamps
+in bundles for goldens. - <code>{"reset": true}</code> ensures
+predictable states in tests.</p>
+<h2 id="backend-designs">5. Backend designs</h2>
+<h3 id="basic-backend">5.1 Basic backend</h3>
+<ul>
+<li>Scoring: base relevance (high/medium/low), pinned bonus, topic
+path/summary/raw matches, <code>prefer_kinds</code>,
+<code>prefer_tags</code>.</li>
+<li>Implementation: <code>basic.rs</code> scoring function returning
+float; orders descending.</li>
+</ul>
+<h3 id="patricia-backend">5.2 Patricia backend</h3>
+<ul>
+<li>Compresses paths into trie segments for prefix lookups.</li>
+<li>Bonus for deeper prefix matches
+(<code>patricia_prefix_depth</code>).</li>
+<li>Falls back to <code>basic</code> heuristics plus prefix depth.</li>
+</ul>
+<h3 id="raptor-backend">5.3 RAPTOR backend</h3>
+<ul>
+<li>Lightweight clustering: overlaps tags and summary tokens with topic
+tokens.</li>
+<li>Recency score (<code>updated_at</code> timestamp) + pin bonus.</li>
+<li><code>cluster_overlap</code> adds points for matching tags or
+summary tokens.</li>
+</ul>
+<h3 id="hybrid-graphragmemtree-backend">5.4 Hybrid (GraphRAG/MemTree)
+backend</h3>
+<ul>
+<li>Extracts entity tokens from paths, tags, metadata.</li>
+<li>Builds frequency map to weight rare tokens.</li>
+<li>Scores overlap with topic tokens and pinned tokens, reuses
+<code>basic_score</code> for baseline.</li>
+<li>Simulates GraphRAG-style entity graphs without external
+service.</li>
+</ul>
+<h3 id="backend-selection">5.5 Backend selection</h3>
+<ul>
+<li><code>StructuredMemoryService::new</code> reads
+<code>LEXON_MEMORY_BACKEND</code> env var (default <code>basic</code>)
+and instantiates the backend trait via
+<code>build_backend(name)</code>.</li>
+<li>On unknown backend, logs warning and falls back to
+<code>basic</code>.</li>
+<li>Future roadmap: per-call overrides via options
+(<code>{"backend": "patricia"}</code>).</li>
+</ul>
+<h3 id="pinning-semantics">5.6 Pinning semantics</h3>
+<ul>
+<li><code>pin_memory</code> / <code>unpin_memory</code> delegate to
+<code>toggle_pin</code> which accepts either <code>id</code> or
+<code>path</code>.</li>
+<li>Updating the pin flag also refreshes <code>updated_at</code> so
+recalls reflect the latest ordering.</li>
+<li>Missing IDs/paths surface
+<code>ExecutorError::RuntimeError("Memory '...' not found in space '...'")</code>.</li>
+</ul>
+<h3 id="backend-guarantees-at-a-glance">5.7 Backend guarantees at a
+glance</h3>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 18%" />
+<col style="width: 36%" />
+<col style="width: 32%" />
+</colgroup>
+<thead>
+<tr>
+<th>Backend</th>
+<th>Persistence</th>
+<th>Consistency / guarantees</th>
+<th>Recommended footprint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>basic</code></td>
+<td>Single JSON file per space</td>
+<td>Deterministic ordering, idempotent upserts by <code>id</code> +
+<code>path</code></td>
+<td>&lt;5k objects per space</td>
+</tr>
+<tr>
+<td><code>patricia</code></td>
+<td>Same JSON file + in-memory trie</td>
+<td>Prefix-aware ordering; serialization unaffected</td>
+<td>Deep config/guide trees</td>
+</tr>
+<tr>
+<td><code>raptor</code></td>
+<td>JSON + cached tag clusters</td>
+<td>At-least-once updates, recency decay (&lt;30d) prevents stale
+bundles</td>
+<td>Spaces dominated by tagged notes</td>
+</tr>
+<tr>
+<td><code>hybrid</code></td>
+<td>JSON + transient entity map</td>
+<td>Entity-overlap scoring; requires <code>metadata.hash</code> for
+dedupe</td>
+<td>Mixed specs + decision logs</td>
+</tr>
+</tbody>
+</table>
+<p>All backends share the same persistence primitive
+(<code>MemorySpaceFile</code>). Switching only changes ordering/scoring;
+the serialized data stays identical.</p>
+<h2 id="bundled-context-format">6. Bundled context format</h2>
+<p><code>recall_context</code> returns:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;space&quot;</span><span class="fu">:</span> <span class="st">&quot;lexon_demo&quot;</span><span class="fu">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;topic&quot;</span><span class="fu">:</span> <span class="st">&quot;runtime&quot;</span><span class="fu">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;generated_at&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-01-01T00:00:00Z&quot;</span><span class="fu">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;global_summary&quot;</span><span class="fu">:</span> <span class="st">&quot;Context bundle for &#39;runtime&#39; (N items): ...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;sections&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;kind&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;summary_micro&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;summary_short&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;summary_long&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;relevance&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;pinned&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;tags&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="er">...</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="er">...</span><span class="fu">},</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;updated_at&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;raw&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span><span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span> <span class="dt">&quot;raw&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span> <span class="dt">&quot;kind&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">}</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;limit&quot;</span><span class="fu">:</span> <span class="dv">2</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Ordering rules: - Pinned + high relevance first. - Respect
+<code>limit</code>, <code>raw_limit</code>. -
+<code>require_high_relevance</code> filters out lower scores. -
+<code>prefer_kinds</code> and <code>prefer_tags</code> boost relevant
+memories.</p>
+<h3 id="ingest-index-query-flow">6.1 Ingest → index → query flow</h3>
+<pre><code>watcher (git diff / filesystem) --&gt; enqueue(raw_asset)
+  -&gt; normalizer (assign path/kind/tags)
+  -&gt; remember_raw / remember_structured
+      -&gt; dedupe by metadata.hash
+      -&gt; persist to MemorySpaceFile (JSON)
+      -&gt; backend caches ordering view
+recall_context/topic --&gt; backend.order_for_topic --&gt; bundle --&gt; before_action hook --&gt; agents/prompts</code></pre>
+<p>Pseudo-API for deterministic ingest:</p>
+<pre class="lexon"><code>let files = filesystem.watch(&quot;docs/runtime/*.md&quot;);
+for file in files {
+  let raw = read_file(file.path);
+  remember_raw(&quot;runtime&quot;, &quot;guide&quot;, raw, strings.json({
+    path_hint: file.path,
+    project: &quot;lexon&quot;,
+    tags: [&quot;runtime&quot;, file.name]
+  }));
+}</code></pre>
+<p>Chunk metadata (<code>chunks[]</code>) is optional, but when present
+it lets downstream RAG pipelines correlate structured memory with vector
+search hits.</p>
+<h2 id="governance-observability">7. Governance &amp; observability</h2>
+<ul>
+<li><strong>Budgets &amp; quotas</strong>: <code>remember_*</code> /
+<code>recall_*</code> share the same budget manager as
+<code>ask_*</code>. Policies can cap USD/token spend per provider and
+per memory space.</li>
+<li><strong>Telemetry spans</strong>: enabling <code>LEXON_OTEL=1</code>
+emits <code>lexon.memory.remember_raw</code>,
+<code>lexon.memory.recall_context</code>, <code>lexon.memory.gc</code>,
+and backend-specific spans with attributes (<code>space</code>,
+<code>topic</code>, <code>backend</code>, <code>items_returned</code>,
+<code>budget_usd</code>).</li>
+<li><strong>Counters</strong>: Prometheus exporter surfaces
+<code>lexon_memory_objects_total</code>,
+<code>lexon_memory_gc_runs_total</code>,
+<code>lexon_memory_pin_toggle_total</code>, plus latency
+histograms.</li>
+<li><strong>Deterministic tests</strong>: <a
+href="../samples/memory/structured_semantic.lx"><code>samples/memory/structured_semantic.lx</code></a>
++ <a
+href="../golden/memory/structured_semantic.txt"><code>golden/memory/structured_semantic.txt</code></a>
+rely on <code>{"reset": true}</code> + <code>freeze_clock</code>. They
+fail CI if bundles drift.</li>
+<li><strong>Storage layout</strong>:
+<code>.lexon/structured_memory/&lt;space&gt;.json</code> and
+<code>.lexon/exports/*.json</code> live next to other runtime state so
+workspaces can be version-controlled or shipped as artifacts.</li>
+</ul>
+<h2 id="error-handling">8. Error handling</h2>
+<ul>
+<li>Missing spaces → file auto-created, but invalid JSON yields
+<code>ExecutorError::RuntimeError("Invalid space ...")</code>.</li>
+<li>Unknown backend name → warning + fallback to
+<code>basic</code>.</li>
+<li>Serialization issues when writing spaces/objects bubble up as
+runtime errors; callers see
+<code>ExecutorError::RuntimeError</code>.</li>
+<li><code>toggle_pin</code>/<code>pin_memory</code> on unknown IDs/paths
+returns explicit <code>"Memory '...' not found"</code> errors.</li>
+<li><code>remember_raw</code> surfaces adapter errors (LLM failures)
+just like <code>ask</code>.</li>
+</ul>
+<h2 id="end-to-end-example-repo-delta-qa">9. End-to-end example (repo
+delta QA)</h2>
+<p>Goal: index today’s repo changes and answer “What changed in
+telemetry?”</p>
+<ol type="1">
+<li><p>Reset + ingest recent diffs:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">memory_space.create</span><span class="er">(</span><span class="st">&quot;lexon_repo&quot;</span><span class="ex">,</span> <span class="st">&quot;&quot;&quot;{&quot;</span>reset<span class="st">&quot;: true}&quot;&quot;&quot;</span><span class="kw">);</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> diff <span class="at">--name-only</span> HEAD~1 <span class="kw">|</span> <span class="fu">grep</span> <span class="st">&#39;.rs$&#39;</span> <span class="kw">|</span> <span class="cf">while</span> <span class="bu">read</span> <span class="va">file</span><span class="kw">;</span> <span class="cf">do</span> <span class="dt">\</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="ex">lexc</span> remember_raw <span class="at">--space</span> lexon_repo <span class="at">--kind</span> code <span class="at">--path</span> <span class="st">&quot;</span><span class="va">$file</span><span class="st">&quot;</span> <span class="st">&quot;</span><span class="va">$file</span><span class="st">&quot;</span><span class="kw">;</span> <span class="dt">\</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div></li>
+<li><p>Recall telemetry:</p>
+<pre class="lexon"><code>let bundle = recall_context(&quot;lexon_repo&quot;, &quot;telemetry&quot;, &quot;&quot;&quot;{&quot;limit&quot;:3,&quot;include_raw&quot;:true}&quot;&quot;&quot;);
+print(bundle.global_summary);</code></pre></li>
+<li><p>Feed bundle into agents/RAG:</p>
+<pre class="lexon"><code>before_action use_context project=&quot;lexon_repo&quot;, topic=&quot;telemetry&quot;;
+let analyst = agent_create(&quot;lexon_repo_analyst&quot;, &quot;&quot;&quot;{&quot;model&quot;:&quot;openai:gpt-4o-mini&quot;}&quot;&quot;&quot;);
+let report = agent_run(analyst, &quot;Describe telemetry changes today&quot;, &quot;&quot;&quot;{&quot;deadline_ms&quot;:15000}&quot;&quot;&quot;);
+print(report);</code></pre></li>
+<li><p>Export or prune:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">lexc</span> memory export lexon_repo <span class="at">--out</span> exports/lexon_repo.json</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">lexc</span> memory gc lexon_repo <span class="at">--ttl-days</span> 30</span></code></pre></div></li>
+</ol>
+<p>The flow exercises ingestion, ordering, recall, MCP hooks, and
+governance knobs end-to-end.</p>
+<h2 id="roadmap-structured-memory-track">10. Roadmap (structured memory
+track)</h2>
+<ul>
+<li>Additional backends (TemporalTree decay, external GraphRAG
+adapters).</li>
+<li>Per-call backend overrides in <code>recall_context</code> /
+<code>recall_kind</code>.</li>
+<li>Cross-project memory links and role-based visibility.</li>
+<li>Memory inspector tooling (<code>lexc memory browse</code>),
+query/filter UI.</li>
+<li>Expanded MCP demos blending structured memory, agents, RAG,
+multioutput.</li>
+</ul>
+<p>See <a href="../ROADMAP.md"><code>ROADMAP.md</code></a> for
+cross-cutting roadmap items (DX, providers, IR optimizations,
+networking/stdlib, sockets, CI hardening, etc.).</p>
+<hr />
+<p><em>Last updated:</em> 2025-12-03<br />
+<em>Files referenced:</em>
+<code>lexc/src/executor/structured_memory.rs</code>,
+<code>lexc/src/executor/structured_memory/backends/*.rs</code>,
+<code>samples/memory/structured_semantic.lx</code>,
+<code>golden/memory/structured_semantic.txt</code>.</p>
+</body>
+</html>
