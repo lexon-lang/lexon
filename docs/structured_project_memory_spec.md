@@ -76,12 +76,10 @@ Raw assets ──> Semantic layer ──> MemoryObject ──> Backend (basic/pa
 
 ### 3.1 Retention + PII
 
-| Policy field | Meaning | Default |
-|--------------|---------|---------|
-| `ttl_days` | Max age before objects are archived/pruned. `memory_space.gc()` enforces it. | `null` (never expires) |
-| `pii_redaction` | List of regexes or detectors (emails, keys) to scrub before persisting `raw`. | `[]` |
-| `export_path` | Absolute or workspace-relative directory for `memory_space.export`. Produces JSON bundle per space. | `.lexon/exports/<space>.json` |
-| `allow_delete` | Boolean guard for `memory_space.delete(space)` operations. | `false` |
+- **`ttl_days`** — Max age before objects are archived or pruned. Enforced via `memory_space.gc()`; default `null` (never expires).
+- **`pii_redaction`** — Regex/detector list (emails, keys, etc.) removed from `raw`; default `[]`.
+- **`export_path`** — Path used by `memory_space.export` to emit JSON bundles per space. Default `.lexon/exports/<space>.json`.
+- **`allow_delete`** — Boolean guard required before `memory_space.delete(space)` runs; default `false`.
 
 Retention enforcement flow:
 1. `remember_*` stamps `created_at`/`updated_at` using deterministic clock when `freeze_clock` is set.
@@ -93,17 +91,15 @@ Deletion/export commands are CLI-level operations so teams can satisfy GDPR/CCPA
 
 ## 4. API surface (Lexon primitives)
 
-| Primitive | Summary |
-|-----------|---------|
-| `memory_space.create(name, metadata_json?)` | Initializes/resets a space. Pass `{"reset": true}` to wipe contents (deterministic tests). |
-| `memory_space.list()` | Lists all spaces (summaries). |
-| `remember_structured(space, payload_json, options?)` | Ingests a pre-built `MemoryObject`. Auto-fills missing summaries from `raw`. |
-| `remember_raw(space, kind, raw_text, options?)` | Calls the semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to infer path, summaries, tags, relevance, `auto_pin`. Options: `model`, `temperature`, `max_tokens`, `path_hint`, `project`, `tags`, `metadata`, `auto_pin`. Falls back to `options.model` → `LEXON_MEMORY_SEMANTIC_MODEL` → `config.llm_model`. |
-| `pin_memory(space, id_or_path)` / `unpin_memory(...)` | Toggle `pinned`. |
-| `set_memory_policy(space, policy_json)` | Persist project-specific auto-pin/retention/visibility rules. |
-| `recall_context(space, topic, options_json?)` | Returns a bundle: `global_summary`, `sections[]`, optional `raw[]`, `generated_at`. Options: `limit`, `raw_limit`, `include_raw`, `include_metadata`, `prefer_kinds`, `prefer_tags`, `require_high_relevance`, `freeze_clock`. |
-| `recall_kind(space, kind, options_json?)` | Returns ordered list of memories filtered by kind. |
-| `before_action use_context project="..." topic="..."` | MCP hook to auto-inject recall bundles before agent tasks. |
+- `memory_space.create(name, metadata_json?)` — Initialize or reset a space. Pass `{"reset": true}` for deterministic wipes.
+- `memory_space.list()` — Enumerate existing spaces with summaries.
+- `remember_structured(space, payload_json, options?)` — Ingest a pre-built `MemoryObject`; fills missing summaries from `raw`.
+- `remember_raw(space, kind, raw_text, options?)` — Use the semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to infer path, summaries, tags, relevance. Options: `model`, `temperature`, `max_tokens`, `path_hint`, `project`, `tags`, `metadata`, `auto_pin`. Fallback: `options.model` → `LEXON_MEMORY_SEMANTIC_MODEL` → `config.llm_model`.
+- `pin_memory(space, id_or_path)` / `unpin_memory(...)` — Toggle the `pinned` flag.
+- `set_memory_policy(space, policy_json)` — Persist per-project auto-pin/retention/visibility rules.
+- `recall_context(space, topic, options_json?)` — Return bundles (`global_summary`, `sections[]`, optional `raw[]`, `generated_at`). Options: `limit`, `raw_limit`, `include_raw`, `include_metadata`, `prefer_kinds`, `prefer_tags`, `require_high_relevance`, `freeze_clock`.
+- `recall_kind(space, kind, options_json?)` — Ordered list filtered by kind.
+- `before_action use_context project=... topic=...` — MCP hook to inject recall bundles before agent steps.
 
 Determinism hooks:
 - `freeze_clock` overrides timestamps in bundles for goldens.
@@ -143,12 +139,12 @@ Determinism hooks:
 
 ### 5.7 Backend guarantees at a glance
 
-| Backend | Persistence | Consistency / guarantees | Recommended footprint |
-|---------|-------------|--------------------------|-----------------------|
-| `basic` | Single JSON file per space | Deterministic ordering, idempotent upserts by `id` + `path` | <5k objects per space |
-| `patricia` | Same JSON file + in-memory trie | Prefix-aware ordering; serialization unaffected | Deep config/guide trees |
-| `raptor` | JSON + cached tag clusters | At-least-once updates, recency decay (<30d) prevents stale bundles | Spaces dominated by tagged notes |
-| `hybrid` | JSON + transient entity map | Entity-overlap scoring; requires `metadata.hash` for dedupe | Mixed specs + decision logs |
+- **basic** — Single JSON file per space with deterministic ordering and idempotent upserts by `id` + `path`; best for <5k objects.
+- **patricia** — Same JSON file plus an in-memory trie for prefix-aware ordering; ideal for deep config/guide trees.
+- **raptor** — JSON plus cached tag clusters with at-least-once updates and <30d recency decay; tuned for tag-heavy notes.
+- **hybrid** — JSON with a transient entity map that scores entity overlap and expects `metadata.hash` for dedupe; good for mixed specs + decision logs.
+
+
 
 All backends share the same persistence primitive (`MemorySpaceFile`). Switching only changes ordering/scoring; the serialized data stays identical.
 

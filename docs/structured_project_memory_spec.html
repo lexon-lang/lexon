@@ -333,46 +333,20 @@ class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="
 flags (future).</li>
 </ul>
 <h3 id="retention-pii">3.1 Retention + PII</h3>
-<table>
-<colgroup>
-<col style="width: 43%" />
-<col style="width: 28%" />
-<col style="width: 28%" />
-</colgroup>
-<thead>
-<tr>
-<th>Policy field</th>
-<th>Meaning</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ttl_days</code></td>
-<td>Max age before objects are archived/pruned.
-<code>memory_space.gc()</code> enforces it.</td>
-<td><code>null</code> (never expires)</td>
-</tr>
-<tr>
-<td><code>pii_redaction</code></td>
-<td>List of regexes or detectors (emails, keys) to scrub before
-persisting <code>raw</code>.</td>
-<td><code>[]</code></td>
-</tr>
-<tr>
-<td><code>export_path</code></td>
-<td>Absolute or workspace-relative directory for
-<code>memory_space.export</code>. Produces JSON bundle per space.</td>
-<td><code>.lexon/exports/&lt;space&gt;.json</code></td>
-</tr>
-<tr>
-<td><code>allow_delete</code></td>
-<td>Boolean guard for <code>memory_space.delete(space)</code>
-operations.</td>
-<td><code>false</code></td>
-</tr>
-</tbody>
-</table>
+<ul>
+<li><strong><code>ttl_days</code></strong> — Max age before objects are
+archived or pruned. Enforced via <code>memory_space.gc()</code>; default
+<code>null</code> (never expires).</li>
+<li><strong><code>pii_redaction</code></strong> — Regex/detector list
+(emails, keys, etc.) removed from <code>raw</code>; default
+<code>[]</code>.</li>
+<li><strong><code>export_path</code></strong> — Path used by
+<code>memory_space.export</code> to emit JSON bundles per space. Default
+<code>.lexon/exports/&lt;space&gt;.json</code>.</li>
+<li><strong><code>allow_delete</code></strong> — Boolean guard required
+before <code>memory_space.delete(space)</code> runs; default
+<code>false</code>.</li>
+</ul>
 <p>Retention enforcement flow: 1. <code>remember_*</code> stamps
 <code>created_at</code>/<code>updated_at</code> using deterministic
 clock when <code>freeze_clock</code> is set. 2.
@@ -388,71 +362,40 @@ audit/compliance or restore elsewhere.</p>
 satisfy GDPR/CCPA requests without editing Lexon files manually.</p>
 <h2 id="api-surface-lexon-primitives">4. API surface (Lexon
 primitives)</h2>
-<table>
-<colgroup>
-<col style="width: 55%" />
-<col style="width: 45%" />
-</colgroup>
-<thead>
-<tr>
-<th>Primitive</th>
-<th>Summary</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>memory_space.create(name, metadata_json?)</code></td>
-<td>Initializes/resets a space. Pass <code>{"reset": true}</code> to
-wipe contents (deterministic tests).</td>
-</tr>
-<tr>
-<td><code>memory_space.list()</code></td>
-<td>Lists all spaces (summaries).</td>
-</tr>
-<tr>
-<td><code>remember_structured(space, payload_json, options?)</code></td>
-<td>Ingests a pre-built <code>MemoryObject</code>. Auto-fills missing
-summaries from <code>raw</code>.</td>
-</tr>
-<tr>
-<td><code>remember_raw(space, kind, raw_text, options?)</code></td>
-<td>Calls the semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to
-infer path, summaries, tags, relevance, <code>auto_pin</code>. Options:
-<code>model</code>, <code>temperature</code>, <code>max_tokens</code>,
+<ul>
+<li><code>memory_space.create(name, metadata_json?)</code> — Initialize
+or reset a space. Pass <code>{"reset": true}</code> for deterministic
+wipes.</li>
+<li><code>memory_space.list()</code> — Enumerate existing spaces with
+summaries.</li>
+<li><code>remember_structured(space, payload_json, options?)</code> —
+Ingest a pre-built <code>MemoryObject</code>; fills missing summaries
+from <code>raw</code>.</li>
+<li><code>remember_raw(space, kind, raw_text, options?)</code> — Use the
+semantic LLM (OpenAI/Anthropic/Google/Ollama/HF/custom) to infer path,
+summaries, tags, relevance. Options: <code>model</code>,
+<code>temperature</code>, <code>max_tokens</code>,
 <code>path_hint</code>, <code>project</code>, <code>tags</code>,
-<code>metadata</code>, <code>auto_pin</code>. Falls back to
+<code>metadata</code>, <code>auto_pin</code>. Fallback:
 <code>options.model</code> → <code>LEXON_MEMORY_SEMANTIC_MODEL</code> →
-<code>config.llm_model</code>.</td>
-</tr>
-<tr>
-<td><code>pin_memory(space, id_or_path)</code> /
-<code>unpin_memory(...)</code></td>
-<td>Toggle <code>pinned</code>.</td>
-</tr>
-<tr>
-<td><code>set_memory_policy(space, policy_json)</code></td>
-<td>Persist project-specific auto-pin/retention/visibility rules.</td>
-</tr>
-<tr>
-<td><code>recall_context(space, topic, options_json?)</code></td>
-<td>Returns a bundle: <code>global_summary</code>,
-<code>sections[]</code>, optional <code>raw[]</code>,
-<code>generated_at</code>. Options: <code>limit</code>,
-<code>raw_limit</code>, <code>include_raw</code>,
+<code>config.llm_model</code>.</li>
+<li><code>pin_memory(space, id_or_path)</code> /
+<code>unpin_memory(...)</code> — Toggle the <code>pinned</code>
+flag.</li>
+<li><code>set_memory_policy(space, policy_json)</code> — Persist
+per-project auto-pin/retention/visibility rules.</li>
+<li><code>recall_context(space, topic, options_json?)</code> — Return
+bundles (<code>global_summary</code>, <code>sections[]</code>, optional
+<code>raw[]</code>, <code>generated_at</code>). Options:
+<code>limit</code>, <code>raw_limit</code>, <code>include_raw</code>,
 <code>include_metadata</code>, <code>prefer_kinds</code>,
 <code>prefer_tags</code>, <code>require_high_relevance</code>,
-<code>freeze_clock</code>.</td>
-</tr>
-<tr>
-<td><code>recall_kind(space, kind, options_json?)</code></td>
-<td>Returns ordered list of memories filtered by kind.</td>
-</tr>
-<tr>
-<td><code>before_action use_context project="..." topic="..."</code></td>
-<td>MCP hook to auto-inject recall bundles before agent tasks.</td>
-</tr>
-</tbody>
-</table>
+<code>freeze_clock</code>.</li>
+<li><code>recall_kind(space, kind, options_json?)</code> — Ordered list
+filtered by kind.</li>
+<li><code>before_action use_context project=... topic=...</code> — MCP
+hook to inject recall bundles before agent steps.</li>
+</ul>
 <p>Determinism hooks: - <code>freeze_clock</code> overrides timestamps
 in bundles for goldens. - <code>{"reset": true}</code> ensures
 predictable states in tests.</p>
@@ -513,51 +456,19 @@ recalls reflect the latest ordering.</li>
 </ul>
 <h3 id="backend-guarantees-at-a-glance">5.7 Backend guarantees at a
 glance</h3>
-<table>
-<colgroup>
-<col style="width: 12%" />
-<col style="width: 18%" />
-<col style="width: 36%" />
-<col style="width: 32%" />
-</colgroup>
-<thead>
-<tr>
-<th>Backend</th>
-<th>Persistence</th>
-<th>Consistency / guarantees</th>
-<th>Recommended footprint</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>basic</code></td>
-<td>Single JSON file per space</td>
-<td>Deterministic ordering, idempotent upserts by <code>id</code> +
-<code>path</code></td>
-<td>&lt;5k objects per space</td>
-</tr>
-<tr>
-<td><code>patricia</code></td>
-<td>Same JSON file + in-memory trie</td>
-<td>Prefix-aware ordering; serialization unaffected</td>
-<td>Deep config/guide trees</td>
-</tr>
-<tr>
-<td><code>raptor</code></td>
-<td>JSON + cached tag clusters</td>
-<td>At-least-once updates, recency decay (&lt;30d) prevents stale
-bundles</td>
-<td>Spaces dominated by tagged notes</td>
-</tr>
-<tr>
-<td><code>hybrid</code></td>
-<td>JSON + transient entity map</td>
-<td>Entity-overlap scoring; requires <code>metadata.hash</code> for
-dedupe</td>
-<td>Mixed specs + decision logs</td>
-</tr>
-</tbody>
-</table>
+<ul>
+<li><strong>basic</strong> — Single JSON file per space with
+deterministic ordering and idempotent upserts by <code>id</code> +
+<code>path</code>; best for &lt;5k objects.</li>
+<li><strong>patricia</strong> — Same JSON file plus an in-memory trie
+for prefix-aware ordering; ideal for deep config/guide trees.</li>
+<li><strong>raptor</strong> — JSON plus cached tag clusters with
+at-least-once updates and &lt;30d recency decay; tuned for tag-heavy
+notes.</li>
+<li><strong>hybrid</strong> — JSON with a transient entity map that
+scores entity overlap and expects <code>metadata.hash</code> for dedupe;
+good for mixed specs + decision logs.</li>
+</ul>
 <p>All backends share the same persistence primitive
 (<code>MemorySpaceFile</code>). Switching only changes ordering/scoring;
 the serialized data stays identical.</p>
