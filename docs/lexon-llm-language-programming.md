@@ -67,13 +67,28 @@ Execution goes through `lexc-cli`. Offline simulations are the default; setting 
 
 ### How it compares
 
-| Criteria | Lexon v1.0.0-rc.1 | LangChain/LlamaIndex stacks | Plain Python/Rust async |
-|----------|------------------|-----------------------------|-------------------------|
-| Orchestration surface | Language primitives (`ask*`, `task.spawn`, `before_action`) | Library APIs layered over notebooks/notebooks + config | You script tasks, retries, and fan-out by hand |
-| Memory + RAG | Vector + structured memory built in, deterministic samples | Plugins that need extra stores/services | Manual DB + embedding wiring |
-| Governance | Sandbox flags, budgets, deterministic runtime, OTEL hooks | Depends on host app | Logging/telemetry are DIY |
-| Developer ergonomics | One CLI + `lexon.toml`; VS Code extension, tree-sitter | Mix of Python, YAML, notebooks, env orchestration | Full control but more glue |
-| Parallelism | Scheduler knows LLM calls, `ask_parallel`, `ask_merge` | Tied to asyncio/executors per project | You manage concurrency + cancellation |
+- **Orchestration surface**
+  - Lexon: Language primitives (`ask*`, `task.spawn`, `before_action`).
+  - LangChain/LlamaIndex: Library APIs layered over notebooks + config.
+  - Plain Python/Rust async: Hand-scripted tasks, retries, fan-out.
+- **Memory + RAG**
+  - Lexon: Vector + structured memory built in, deterministic samples.
+  - LangChain/LlamaIndex: Plugins that depend on extra stores/services.
+  - Plain host languages: Manual DB + embedding wiring.
+- **Governance**
+  - Lexon: Sandbox flags, budgets, deterministic runtime, OTEL hooks.
+  - LangChain/LlamaIndex: Depends on surrounding app.
+  - Plain host languages: Logging/telemetry are DIY.
+- **Developer ergonomics**
+  - Lexon: One CLI + `lexon.toml`, VS Code extension, tree-sitter.
+  - LangChain/LlamaIndex: Mix of Python, YAML, notebooks, env orchestration.
+  - Plain host languages: Maximum control but more glue.
+- **Parallelism**
+  - Lexon: Scheduler understands LLM calls, `ask_parallel`, `ask_merge`.
+  - LangChain/LlamaIndex: Tied to whichever executor each project wires.
+  - Plain host languages: You own concurrency + cancellation.
+
+---
 
 ---
 
@@ -225,13 +240,13 @@ print(bundle);
 
 ## 5. Where it fits in the broader stack
 
-| Layer | How structured memory plugs in |
-|-------|--------------------------------|
-| **RAG** | `recall_context` yields `global_summary + sections + raw`. Chain with `memory_index.hybrid_search` for large corpora. |
-| **MCP/agents** | `before_action use_context` auto-injects bundles; pinning ensures critical guides/configs always enter the prompt. |
-| **Sessions** | Session transcripts can be summarized and stored via `remember_structured`, giving each project a durable storyline. |
-| **Multioutput** | Use curated memories to generate multi-file briefings via `ask_multioutput`. |
-| **Observability** | `remember_*` / `recall_*` emit spans, respect budgets, and show up in OTEL/Prometheus dashboards. |
+- **RAG** — `recall_context` yields `global_summary + sections + raw`; chain with `memory_index.hybrid_search` for large corpora.
+- **MCP/agents** — `before_action use_context` auto-injects bundles so pinned guides/configs always enter the prompt.
+- **Sessions** — Session transcripts are summarized/stored via `remember_structured`, giving each project a durable storyline.
+- **Multioutput** — Curated memories feed `ask_multioutput` to produce multi-file briefings.
+- **Observability** — `remember_*` / `recall_*` emit spans, respect budgets, and surface in OTEL/Prometheus dashboards.
+
+
 
 Structured memory is a peer to RAG, MCP, sessions, merge/fallback/ensemble, arbitrage, multioutput, and other orchestration features—one more first-class capability, not the only story.
 
@@ -258,17 +273,17 @@ If you just need the checklist, here it is:
 
 ## 7. Stability map (RC vs 1.1)
 
-| Area | RC.1 status | Heading into 1.1 |
-|------|-------------|------------------|
-| Language + scheduler | ✅ Frozen: modules, async/await, scheduler, error handling | Perf profiling + IR tweaks only |
-| ask/ask_parallel/ask_merge + validation | ✅ Frozen APIs | Expand ensembles + arbitration policies |
-| Structured Project Memory | ✅ GA-level primitives + pluggable backends | Memory inspector CLI, backend hints |
-| Vector RAG + multioutput | 🔄 Stable core, polishing APIs | RAG Lite presets, richer multioutput helpers |
-| MCP/agents | ✅ CLI switches, quotas, cancellation done | Add sample supervisors + tool packs |
-| Observability | ✅ OTEL/Prometheus spans wired | Dashboard templates + provider budget reports |
-| Iterators/data transforms | ✅ map/filter/reduce/ETL minis | Windowed ops + join helpers |
+- **Language + scheduler** — RC.1: ✅ Frozen (modules, async/await, scheduler, error handling). Heading to 1.1: perf profiling + IR tweaks.
+- **ask/ask_parallel/ask_merge + validation** — RC.1: ✅ APIs frozen. Next: richer ensembles + arbitration knobs.
+- **Structured Project Memory** — RC.1: ✅ GA-level primitives + pluggable backends. Next: memory inspector CLI, backend hints.
+- **Vector RAG + multioutput** — RC.1: 🔄 Stable core, polishing APIs. Next: RAG Lite presets + better multioutput helpers.
+- **MCP/agents** — RC.1: ✅ CLI switches, quotas, cancellation in place. Next: sample supervisors + tool packs.
+- **Observability** — RC.1: ✅ OTEL/Prometheus spans wired. Next: dashboard templates + provider budget reports.
+- **Iterators/data transforms** — RC.1: ✅ map/filter/reduce/ETL minis. Next: windowed ops + join helpers.
 
-**GA exit criteria**: p95 latency under 1.2× baseline for `samples/apps/research_analyst`, <1% regression in token budgets on `samples/memory/structured_semantic`, and OTEL spans present for every tool/ask call in CI smoke tests. Once those are green, RC.1 graduates to 1.0.0.
+**GA exit criteria:** p95 runtime <1.2× baseline (`samples/apps/research_analyst`), <1% token-budget regression on `samples/memory/structured_semantic`, and OTEL spans present for every tool/ask call in CI smoke tests.
+
+---
 
 ---
 

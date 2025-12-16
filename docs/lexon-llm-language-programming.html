@@ -334,57 +334,48 @@ the default; setting <code>OPENAI_API_KEY</code>,
 provider blocks in <code>lexon.toml</code> seamlessly switches to real
 models.</p>
 <h3 id="how-it-compares">How it compares</h3>
-<table>
-<colgroup>
-<col style="width: 12%" />
-<col style="width: 21%" />
-<col style="width: 35%" />
-<col style="width: 30%" />
-</colgroup>
-<thead>
-<tr>
-<th>Criteria</th>
-<th>Lexon v1.0.0-rc.1</th>
-<th>LangChain/LlamaIndex stacks</th>
-<th>Plain Python/Rust async</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Orchestration surface</td>
-<td>Language primitives (<code>ask*</code>, <code>task.spawn</code>,
-<code>before_action</code>)</td>
-<td>Library APIs layered over notebooks/notebooks + config</td>
-<td>You script tasks, retries, and fan-out by hand</td>
-</tr>
-<tr>
-<td>Memory + RAG</td>
-<td>Vector + structured memory built in, deterministic samples</td>
-<td>Plugins that need extra stores/services</td>
-<td>Manual DB + embedding wiring</td>
-</tr>
-<tr>
-<td>Governance</td>
-<td>Sandbox flags, budgets, deterministic runtime, OTEL hooks</td>
-<td>Depends on host app</td>
-<td>Logging/telemetry are DIY</td>
-</tr>
-<tr>
-<td>Developer ergonomics</td>
-<td>One CLI + <code>lexon.toml</code>; VS Code extension,
-tree-sitter</td>
-<td>Mix of Python, YAML, notebooks, env orchestration</td>
-<td>Full control but more glue</td>
-</tr>
-<tr>
-<td>Parallelism</td>
-<td>Scheduler knows LLM calls, <code>ask_parallel</code>,
-<code>ask_merge</code></td>
-<td>Tied to asyncio/executors per project</td>
-<td>You manage concurrency + cancellation</td>
-</tr>
-</tbody>
-</table>
+<ul>
+<li><strong>Orchestration surface</strong>
+<ul>
+<li>Lexon: Language primitives (<code>ask*</code>,
+<code>task.spawn</code>, <code>before_action</code>).</li>
+<li>LangChain/LlamaIndex: Library APIs layered over notebooks +
+config.</li>
+<li>Plain Python/Rust async: Hand-scripted tasks, retries, fan-out.</li>
+</ul></li>
+<li><strong>Memory + RAG</strong>
+<ul>
+<li>Lexon: Vector + structured memory built in, deterministic
+samples.</li>
+<li>LangChain/LlamaIndex: Plugins that depend on extra
+stores/services.</li>
+<li>Plain host languages: Manual DB + embedding wiring.</li>
+</ul></li>
+<li><strong>Governance</strong>
+<ul>
+<li>Lexon: Sandbox flags, budgets, deterministic runtime, OTEL
+hooks.</li>
+<li>LangChain/LlamaIndex: Depends on surrounding app.</li>
+<li>Plain host languages: Logging/telemetry are DIY.</li>
+</ul></li>
+<li><strong>Developer ergonomics</strong>
+<ul>
+<li>Lexon: One CLI + <code>lexon.toml</code>, VS Code extension,
+tree-sitter.</li>
+<li>LangChain/LlamaIndex: Mix of Python, YAML, notebooks, env
+orchestration.</li>
+<li>Plain host languages: Maximum control but more glue.</li>
+</ul></li>
+<li><strong>Parallelism</strong>
+<ul>
+<li>Lexon: Scheduler understands LLM calls, <code>ask_parallel</code>,
+<code>ask_merge</code>.</li>
+<li>LangChain/LlamaIndex: Tied to whichever executor each project
+wires.</li>
+<li>Plain host languages: You own concurrency + cancellation.</li>
+</ul></li>
+</ul>
+<hr />
 <hr />
 <h2 id="llm-orchestration-suite-beyond-any-single-feature">2. LLM
 orchestration suite (beyond any single feature)</h2>
@@ -567,47 +558,22 @@ retention, visibility flags, deterministic resets.</li>
 <hr />
 <h2 id="where-it-fits-in-the-broader-stack">5. Where it fits in the
 broader stack</h2>
-<table>
-<colgroup>
-<col style="width: 17%" />
-<col style="width: 82%" />
-</colgroup>
-<thead>
-<tr>
-<th>Layer</th>
-<th>How structured memory plugs in</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>RAG</strong></td>
-<td><code>recall_context</code> yields
-<code>global_summary + sections + raw</code>. Chain with
-<code>memory_index.hybrid_search</code> for large corpora.</td>
-</tr>
-<tr>
-<td><strong>MCP/agents</strong></td>
-<td><code>before_action use_context</code> auto-injects bundles; pinning
-ensures critical guides/configs always enter the prompt.</td>
-</tr>
-<tr>
-<td><strong>Sessions</strong></td>
-<td>Session transcripts can be summarized and stored via
-<code>remember_structured</code>, giving each project a durable
-storyline.</td>
-</tr>
-<tr>
-<td><strong>Multioutput</strong></td>
-<td>Use curated memories to generate multi-file briefings via
-<code>ask_multioutput</code>.</td>
-</tr>
-<tr>
-<td><strong>Observability</strong></td>
-<td><code>remember_*</code> / <code>recall_*</code> emit spans, respect
-budgets, and show up in OTEL/Prometheus dashboards.</td>
-</tr>
-</tbody>
-</table>
+<ul>
+<li><strong>RAG</strong> — <code>recall_context</code> yields
+<code>global_summary + sections + raw</code>; chain with
+<code>memory_index.hybrid_search</code> for large corpora.</li>
+<li><strong>MCP/agents</strong> — <code>before_action use_context</code>
+auto-injects bundles so pinned guides/configs always enter the
+prompt.</li>
+<li><strong>Sessions</strong> — Session transcripts are
+summarized/stored via <code>remember_structured</code>, giving each
+project a durable storyline.</li>
+<li><strong>Multioutput</strong> — Curated memories feed
+<code>ask_multioutput</code> to produce multi-file briefings.</li>
+<li><strong>Observability</strong> — <code>remember_*</code> /
+<code>recall_*</code> emit spans, respect budgets, and surface in
+OTEL/Prometheus dashboards.</li>
+</ul>
 <p>Structured memory is a peer to RAG, MCP, sessions,
 merge/fallback/ensemble, arbitrage, multioutput, and other orchestration
 features—one more first-class capability, not the only story.</p>
@@ -656,62 +622,30 @@ fuzz harnesses.</li>
 </ul>
 <hr />
 <h2 id="stability-map-rc-vs-1.1">7. Stability map (RC vs 1.1)</h2>
-<table>
-<colgroup>
-<col style="width: 16%" />
-<col style="width: 35%" />
-<col style="width: 48%" />
-</colgroup>
-<thead>
-<tr>
-<th>Area</th>
-<th>RC.1 status</th>
-<th>Heading into 1.1</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Language + scheduler</td>
-<td>✅ Frozen: modules, async/await, scheduler, error handling</td>
-<td>Perf profiling + IR tweaks only</td>
-</tr>
-<tr>
-<td>ask/ask_parallel/ask_merge + validation</td>
-<td>✅ Frozen APIs</td>
-<td>Expand ensembles + arbitration policies</td>
-</tr>
-<tr>
-<td>Structured Project Memory</td>
-<td>✅ GA-level primitives + pluggable backends</td>
-<td>Memory inspector CLI, backend hints</td>
-</tr>
-<tr>
-<td>Vector RAG + multioutput</td>
-<td>🔄 Stable core, polishing APIs</td>
-<td>RAG Lite presets, richer multioutput helpers</td>
-</tr>
-<tr>
-<td>MCP/agents</td>
-<td>✅ CLI switches, quotas, cancellation done</td>
-<td>Add sample supervisors + tool packs</td>
-</tr>
-<tr>
-<td>Observability</td>
-<td>✅ OTEL/Prometheus spans wired</td>
-<td>Dashboard templates + provider budget reports</td>
-</tr>
-<tr>
-<td>Iterators/data transforms</td>
-<td>✅ map/filter/reduce/ETL minis</td>
-<td>Windowed ops + join helpers</td>
-</tr>
-</tbody>
-</table>
-<p><strong>GA exit criteria</strong>: p95 latency under 1.2× baseline
-for <code>samples/apps/research_analyst</code>, &lt;1% regression in
-token budgets on <code>samples/memory/structured_semantic</code>, and
-OTEL spans present for every tool/ask call in CI smoke tests. Once those
-are green, RC.1 graduates to 1.0.0.</p>
+<ul>
+<li><strong>Language + scheduler</strong> — RC.1: ✅ Frozen (modules,
+async/await, scheduler, error handling). Heading to 1.1: perf profiling
++ IR tweaks.</li>
+<li><strong>ask/ask_parallel/ask_merge + validation</strong> — RC.1: ✅
+APIs frozen. Next: richer ensembles + arbitration knobs.</li>
+<li><strong>Structured Project Memory</strong> — RC.1: ✅ GA-level
+primitives + pluggable backends. Next: memory inspector CLI, backend
+hints.</li>
+<li><strong>Vector RAG + multioutput</strong> — RC.1: 🔄 Stable core,
+polishing APIs. Next: RAG Lite presets + better multioutput
+helpers.</li>
+<li><strong>MCP/agents</strong> — RC.1: ✅ CLI switches, quotas,
+cancellation in place. Next: sample supervisors + tool packs.</li>
+<li><strong>Observability</strong> — RC.1: ✅ OTEL/Prometheus spans
+wired. Next: dashboard templates + provider budget reports.</li>
+<li><strong>Iterators/data transforms</strong> — RC.1: ✅
+map/filter/reduce/ETL minis. Next: windowed ops + join helpers.</li>
+</ul>
+<p><strong>GA exit criteria:</strong> p95 runtime &lt;1.2× baseline
+(<code>samples/apps/research_analyst</code>), &lt;1% token-budget
+regression on <code>samples/memory/structured_semantic</code>, and OTEL
+spans present for every tool/ask call in CI smoke tests.</p>
+<hr />
 <hr />
 <h2 id="samples-how-to-actually-use-lexon">8. Samples &amp; how to
 actually use Lexon</h2>
